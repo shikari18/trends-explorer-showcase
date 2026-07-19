@@ -72,7 +72,9 @@ function Home() {
                     Victor <span style={{ fontWeight: 400 }}>👋</span>
                   </h1>
                 </div>
-                <div
+                <Link
+                  to="/profile"
+                  aria-label="Go to profile"
                   className="flex items-center justify-center shrink-0"
                   style={{
                     width: 44,
@@ -89,7 +91,7 @@ function Home() {
                   }}
                 >
                   V
-                </div>
+                </Link>
               </div>
               <p
                 className="px-6 mt-1.5"

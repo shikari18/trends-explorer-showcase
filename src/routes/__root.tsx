@@ -76,22 +76,39 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { title: "Trends — Premium shopping, elevated" },
+      { name: "description", content: "Trends is the premium e-commerce platform for curated products from the world's most exclusive brands." },
+      { name: "author", content: "Trends" },
+      // PWA / mobile
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Trends" },
+      { name: "theme-color", content: "#0F62FE" },
+      { name: "msapplication-TileColor", content: "#0F62FE" },
+      { name: "msapplication-TileImage", content: "/icon-192.png" },
+      // Open Graph
+      { property: "og:title", content: "Trends — Premium shopping, elevated" },
+      { property: "og:description", content: "Premium shopping, elevated." },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "/image.png" },
+      { property: "og:image:width", content: "1254" },
+      { property: "og:image:height", content: "1254" },
+      // Twitter
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Trends" },
+      { name: "twitter:description", content: "Premium shopping, elevated." },
+      { name: "twitter:image", content: "/image.png" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "stylesheet", href: appCss },
+      // Icons
+      { rel: "icon", href: "/icon-192.png", type: "image/png" },
+      { rel: "icon", href: "/icon-512.png", type: "image/png", sizes: "512x512" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      // PWA manifest
+      { rel: "manifest", href: "/manifest.json" },
     ],
   }),
   shellComponent: RootShell,
@@ -101,6 +118,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+
   return (
     <html lang="en">
       <head>
