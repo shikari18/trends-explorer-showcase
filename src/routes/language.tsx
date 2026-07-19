@@ -74,13 +74,6 @@ function Index() {
             }}
           />
 
-<div className="relative" style={{ height: 54 }}>
-            <div
-              className="absolute left-1/2 -translate-x-1/2"
-              style={{ top: 10, width: 120, height: 34, borderRadius: 20, background: "#000" }}
-            />
-          </div>
-
           <div className="relative h-[calc(100%-54px)] flex flex-col">
             <div className="px-6 pt-6">
               <h1 style={{ fontSize: 30, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.9, color: "#111111", textAlign: "center" }}>

@@ -47,11 +47,7 @@ function Splash() {
           transition: "opacity 700ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
-        {/* dynamic island (kept as hardware) */}
         <div
-          className="absolute left-1/2 -translate-x-1/2"
-          style={{ top: 10, width: 120, height: 34, borderRadius: 20, background: "#000" }}
-        />
 
         {/* Ambient radial glow */}
         <div

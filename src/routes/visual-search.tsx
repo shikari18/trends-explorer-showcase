@@ -245,11 +245,5 @@ function glass() {
 
 function StatusBarLight() {
   return (
-    <div className="relative" style={{ height: 54 }}>
-            <div
-              className="absolute left-1/2 -translate-x-1/2"
-              style={{ top: 10, width: 120, height: 34, borderRadius: 20, background: "#000" }}
-            />
-          </div>
   );
 }

@@ -17,9 +17,6 @@ function AR() {
         <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 25%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0.5) 100%)" }} />
 
         <div className="relative" style={{ color: "#fff" }}>
-          <div className="relative" style={{ height: 54 }}>
-            <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 10, width: 120, height: 34, borderRadius: 20, background: "#000" }} />
-          </div>
           {/* Top nav */}
           <div className="flex items-center justify-between px-5 mt-1">
             <Link to="/product" aria-label="Back" style={glassBtn()} className="flex items-center justify-center">
