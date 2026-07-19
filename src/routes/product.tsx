@@ -126,7 +126,7 @@ function Product() {
                 <span style={{ fontSize: 12.5, color: "#8A8A8A" }}>(1,248 Reviews)</span>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <div style={{ fontSize: 30, fontWeight: 700, color: "#111", letterSpacing: -0.9 }}>$2,450</div>
+                <div style={{ fontSize: 30, fontWeight: 700, color: "#111", letterSpacing: -0.9 }}>?2,450</div>
                 <div className="inline-flex items-center gap-1.5">
                   <span style={{ width: 8, height: 8, borderRadius: 999, background: "#34C759", boxShadow: "0 0 0 3px rgba(52,199,89,0.18)" }} />
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: "#34C759", letterSpacing: -0.1 }}>In Stock</span>

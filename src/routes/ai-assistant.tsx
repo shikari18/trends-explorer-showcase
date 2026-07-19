@@ -48,7 +48,7 @@ function AI() {
             {/* Conversation */}
             <div className="px-5 mt-6 space-y-2.5">
               <Bubble ai>Hello Victor 👋<br/>I'm your personal shopping assistant. I can help you find products, compare items, discover luxury brands, or choose the perfect gift.</Bubble>
-              <Bubble>I'm looking for a premium leather bag under $2,500.</Bubble>
+              <Bubble>I'm looking for a premium leather bag under ?2,500.</Bubble>
               <Bubble ai>I found three handcrafted leather bags from Saint Laurent, Gucci, and Prada that match your style and budget. Would you like to compare them?</Bubble>
             </div>
 
@@ -62,7 +62,7 @@ function AI() {
 
             {/* Suggested prompts */}
             <div className="mt-5 flex gap-2 overflow-x-auto px-5" style={{ scrollbarWidth: "none" }}>
-              {["Best gifts under $500", "Compare iPhones", "Luxury handbags", "Find matching shoes", "Vacation outfits", "Office setup"].map((s) => (
+              {["Best gifts under ?500", "Compare iPhones", "Luxury handbags", "Find matching shoes", "Vacation outfits", "Office setup"].map((s) => (
                 <button key={s} className="shrink-0"
                   style={{ height: 32, padding: "0 12px", borderRadius: 999, fontSize: 12, fontWeight: 600, color: "#111",
                     background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)",

@@ -86,14 +86,14 @@ function Checkout() {
                   <div style={{ fontSize: 12, color: "#666" }}>3 Items</div>
                 </div>
                 <div className="mt-3 space-y-2" style={{ fontSize: 13.5 }}>
-                  <Row label="Subtotal" value="$3,798" />
+                  <Row label="Subtotal" value="?3,798" />
                   <Row label="Shipping" value={<span style={{ color: "#34C759", fontWeight: 700 }}>Free</span>} />
-                  <Row label="Tax" value="$285" />
+                  <Row label="Tax" value="?285" />
                 </div>
                 <div className="my-3" style={{ height: 1, background: "rgba(17,17,17,0.06)" }} />
                 <div className="flex items-center justify-between">
                   <span style={{ fontSize: 14, color: "#666" }}>Total</span>
-                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>$4,083</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>?4,083</span>
                 </div>
               </Card>
             </div>
@@ -150,7 +150,7 @@ function Checkout() {
           >
             <div className="flex-1">
               <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.3, fontWeight: 600, textTransform: "uppercase" }}>Total</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>$4,083</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>?4,083</div>
             </div>
             <Link
               to="/payment"

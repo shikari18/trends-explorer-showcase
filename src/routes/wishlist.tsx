@@ -19,12 +19,12 @@ export const Route = createFileRoute("/wishlist")({
 
 const COLLECTIONS = ["Favorites", "Luxury Bags", "Tech", "Fashion", "Shoes", "Accessories"];
 const PRODUCTS = [
-  { brand: "Saint Laurent", name: "Luxury Leather Tote", price: "$2,450", img: tote },
-  { brand: "Apple", name: "Watch Ultra 3", price: "$899", img: watch },
-  { brand: "Sony", name: "WH-1000XM6", price: "$449", img: headphones },
-  { brand: "Nike", name: "Air Max Premium", price: "$220", img: sneaker },
-  { brand: "Louis Vuitton", name: "Pocket Organizer", price: "$690", img: wallet },
-  { brand: "Ray-Ban", name: "Aviator Classic", price: "$180", img: sunglasses },
+  { brand: "Saint Laurent", name: "Luxury Leather Tote", price: "?2,450", img: tote },
+  { brand: "Apple", name: "Watch Ultra 3", price: "?899", img: watch },
+  { brand: "Sony", name: "WH-1000XM6", price: "?449", img: headphones },
+  { brand: "Nike", name: "Air Max Premium", price: "?220", img: sneaker },
+  { brand: "Louis Vuitton", name: "Pocket Organizer", price: "?690", img: wallet },
+  { brand: "Ray-Ban", name: "Aviator Classic", price: "?180", img: sunglasses },
 ];
 const AI = [
   { name: "Leather Wallet", img: wallet },

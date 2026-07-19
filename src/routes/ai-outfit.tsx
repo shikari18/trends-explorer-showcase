@@ -13,11 +13,11 @@ export const Route = createFileRoute("/ai-outfit")({
 });
 
 const OUTFIT = [
-  { name: "Cashmere Jacket", price: "$1,290", img: jacket },
-  { name: "Wool Trousers", price: "$480", img: jacket },
-  { name: "Runner Sneakers", price: "$390", img: sneaker },
-  { name: "Luxury Watch", price: "$2,150", img: watch },
-  { name: "Leather Bag", price: "$1,860", img: bag },
+  { name: "Cashmere Jacket", price: "?1,290", img: jacket },
+  { name: "Wool Trousers", price: "?480", img: jacket },
+  { name: "Runner Sneakers", price: "?390", img: sneaker },
+  { name: "Luxury Watch", price: "?2,150", img: watch },
+  { name: "Leather Bag", price: "?1,860", img: bag },
 ];
 
 function AIOutfit() {

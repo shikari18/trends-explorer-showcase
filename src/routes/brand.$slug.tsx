@@ -16,10 +16,10 @@ export const Route = createFileRoute("/brand/$slug")({
 
 const CATS = ["All", "New Arrivals", "Bags", "Shoes", "Accessories", "Ready-to-Wear", "Sale"];
 const PRODUCTS = [
-  { name: "Leather Tote", price: "$2,450", img: tote },
-  { name: "Chelsea Boots", price: "$1,290", img: loafer },
-  { name: "Bifold Wallet", price: "$690", img: wallet },
-  { name: "Cassandre Sunglasses", price: "$520", img: sunglasses },
+  { name: "Leather Tote", price: "?2,450", img: tote },
+  { name: "Chelsea Boots", price: "?1,290", img: loafer },
+  { name: "Bifold Wallet", price: "?690", img: wallet },
+  { name: "Cassandre Sunglasses", price: "?520", img: sunglasses },
 ];
 
 function BrandStore() {

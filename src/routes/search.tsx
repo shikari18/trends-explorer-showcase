@@ -30,10 +30,10 @@ const TRENDING = [
 ];
 
 const SUGGESTED = [
-  { name: "Watch Ultra 2", brand: "Apple", price: "$799", img: watch },
-  { name: "Monogram Wallet", brand: "Louis Vuitton", price: "$540", img: wallet },
-  { name: "Alpha 7 IV", brand: "Sony", price: "$2,498", img: camera },
-  { name: "Air Max Runner", brand: "Nike", price: "$180", img: sneaker },
+  { name: "Watch Ultra 2", brand: "Apple", price: "?799", img: watch },
+  { name: "Monogram Wallet", brand: "Louis Vuitton", price: "?540", img: wallet },
+  { name: "Alpha 7 IV", brand: "Sony", price: "?2,498", img: camera },
+  { name: "Air Max Runner", brand: "Nike", price: "?180", img: sneaker },
 ];
 
 function SearchScreen() {

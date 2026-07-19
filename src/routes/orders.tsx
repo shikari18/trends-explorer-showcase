@@ -15,9 +15,9 @@ export const Route = createFileRoute("/orders")({
 const FILTERS = ["All", "Processing", "Shipped", "Delivered", "Cancelled"];
 
 const ORDERS = [
-  { id: "TRD-482917", name: "Luxury Leather Tote", brand: "Saint Laurent", date: "Sep 18, 2026", total: "$2,450", status: "Delivered", tone: "#34C759", cta: "View Details", img: tote },
-  { id: "TRD-482643", name: "Watch Ultra 3", brand: "Apple", date: "Sep 14, 2026", total: "$899", status: "Shipped", tone: "#0F62FE", cta: "Track Package", img: watch },
-  { id: "TRD-481998", name: "WH-1000XM6", brand: "Sony", date: "Sep 10, 2026", total: "$449", status: "Processing", tone: "#FF9500", cta: "View Status", img: headphones },
+  { id: "TRD-482917", name: "Luxury Leather Tote", brand: "Saint Laurent", date: "Sep 18, 2026", total: "?2,450", status: "Delivered", tone: "#34C759", cta: "View Details", img: tote },
+  { id: "TRD-482643", name: "Watch Ultra 3", brand: "Apple", date: "Sep 14, 2026", total: "?899", status: "Shipped", tone: "#0F62FE", cta: "Track Package", img: watch },
+  { id: "TRD-481998", name: "WH-1000XM6", brand: "Sony", date: "Sep 10, 2026", total: "?449", status: "Processing", tone: "#FF9500", cta: "View Status", img: headphones },
 ];
 
 function Orders() {
