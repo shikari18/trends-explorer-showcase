@@ -244,6 +244,5 @@ function glass() {
 }
 
 function StatusBarLight() {
-  return (
-  );
+  return null;
 }
