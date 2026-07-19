@@ -87,8 +87,6 @@ function AI() {
           </div>
         </div>
 
-        <BottomNav active="profile" />
-        <HomeIndicator />
       </>
     </PhoneFrame>
   );
