@@ -47,7 +47,6 @@ function Splash() {
           transition: "opacity 700ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
-        <div
 
         {/* Ambient radial glow */}
         <div
