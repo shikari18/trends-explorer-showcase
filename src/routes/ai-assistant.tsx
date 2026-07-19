@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Clock, Plus, Mic, Camera, ArrowUp, GitCompare, Gift, Wand2, PackageSearch } from "lucide-react";
-import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
-import { BottomNav } from "@/components/phone/BottomNav";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Clock, Plus, Mic, Camera, ArrowUp, GitCompare, Gift, Wand2, PackageSearch, ArrowLeft } from "lucide-react";
+import { PhoneFrame, StatusBar } from "@/components/phone/PhoneFrame";
+
 
 export const Route = createFileRoute("/ai-assistant")({
   component: AI,
@@ -9,6 +9,7 @@ export const Route = createFileRoute("/ai-assistant")({
 });
 
 function AI() {
+  const navigate = useNavigate();
   return (
     <PhoneFrame>
       <>
@@ -16,10 +17,18 @@ function AI() {
         <div className="relative h-[calc(100%-54px)] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
           <div className="pb-40">
             <div className="flex items-center justify-between px-5 pt-2">
-              <div style={{ width: 40 }} />
+              <button
+                onClick={() => navigate({ to: "/home" })}
+                aria-label="Back"
+                style={circle()}
+                className="flex items-center justify-center"
+              >
+                <ArrowLeft size={17} color="#111" />
+              </button>
               <div style={{ fontSize: 15.5, fontWeight: 600, color: "#111", letterSpacing: -0.3 }}>Trends AI</div>
               <button aria-label="History" style={circle()} className="flex items-center justify-center"><Clock size={17} color="#111" /></button>
             </div>
+
 
             {/* Orb */}
             <div className="mt-4 flex justify-center relative">
@@ -78,8 +87,6 @@ function AI() {
           </div>
         </div>
 
-        <BottomNav active="profile" />
-        <HomeIndicator />
       </>
     </PhoneFrame>
   );
