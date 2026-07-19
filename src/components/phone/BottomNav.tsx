@@ -17,15 +17,17 @@ export function BottomNav({ active }: { active: Tab; variant?: string }) {
     <>
       <div
         aria-hidden
-        className="pointer-events-none absolute left-0 right-0"
+        className="pointer-events-none fixed left-0 right-0"
         style={{
           bottom: 0,
           height: 130,
+          zIndex: 40,
           background:
             "linear-gradient(to top, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.6) 65%, rgba(255,255,255,0) 100%)",
         }}
       />
-      <div className="absolute left-0 right-0 flex justify-center" style={{ bottom: 22 }}>
+      <div className="fixed left-0 right-0 flex justify-center" style={{ bottom: 22, zIndex: 41 }}>
+
         <div
           className="flex items-center"
           style={{
