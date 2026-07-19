@@ -161,14 +161,10 @@ function Index() {
                 <Link to="/signin" style={{ color: "#0F62FE", fontWeight: 600 }}>Sign In</Link>
               </div>
 
-              <div className="flex justify-center mt-8">
-                <div style={{ width: 134, height: 5, borderRadius: 3, background: "#111111" }} />
-              </div>
             </div>
           </div>
-        </div>
-      </div>
     </main>
+
   );
 }
 
