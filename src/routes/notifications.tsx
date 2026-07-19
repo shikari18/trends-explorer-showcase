@@ -30,9 +30,9 @@ function Notifications() {
     <PhoneFrame>
       <>
         <StatusBar />
-        <div className="relative h-[calc(100%-54px)] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-32">
-            <div className="flex items-center justify-between px-5 pt-2">
+            <div className="flex items-center justify-between px-5 pt-4">
               <Link to="/profile" aria-label="Back" className="flex items-center justify-center" style={circle()}><ChevronLeft size={18} color="#111" /></Link>
               <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: -0.3, color: "#111" }}>Notifications</div>
               <button style={{ fontSize: 12.5, fontWeight: 600, color: "#0F62FE" }}>Mark all read</button>

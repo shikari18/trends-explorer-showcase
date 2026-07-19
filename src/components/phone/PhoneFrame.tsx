@@ -13,7 +13,10 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
         color: "#111111",
       }}
     >
-      <div className="relative w-full min-h-screen" style={{ background: "#FFFFFF" }}>
+      <div
+        className="relative w-full flex flex-col"
+        style={{ background: "#FFFFFF", minHeight: "100svh", height: "100svh", overflow: "hidden" }}
+      >
         {children}
       </div>
     </main>

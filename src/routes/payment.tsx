@@ -18,9 +18,9 @@ function Payment() {
     <PhoneFrame>
       <>
         <StatusBar />
-        <div className="relative h-[calc(100%-54px)] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-32">
-            <div className="flex items-center justify-between px-5 pt-2">
+            <div className="flex items-center justify-between px-5 pt-4">
               <Link to="/checkout" aria-label="Back" style={circle()} className="flex items-center justify-center">
                 <ArrowLeft size={18} color="#111" />
               </Link>

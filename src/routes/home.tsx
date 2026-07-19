@@ -51,10 +51,10 @@ function Home() {
           <StatusBar />
 
           {/* Scroll area */}
-          <div className="relative h-[calc(100%-54px)] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+          <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
             <div className="pb-32">
               {/* Greeting */}
-              <div className="px-6 pt-4 flex items-start justify-between">
+              <div className="px-6 pt-6 flex items-start justify-between">
                 <div>
                   <div style={{ fontSize: 13.5, color: "#8A8A8A", letterSpacing: -0.1, fontWeight: 500 }}>
                     Good Morning

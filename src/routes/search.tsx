@@ -57,7 +57,7 @@ function SearchScreen() {
           }}
         />
         <StatusBar />
-        <div className="relative h-[calc(100%-54px)] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-32">
             {/* Title */}
             <div className="px-6 pt-4">

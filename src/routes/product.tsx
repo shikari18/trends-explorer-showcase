@@ -33,10 +33,10 @@ function Product() {
     <PhoneFrame>
       <>
         <StatusBar />
-        <div className="relative h-[calc(100%-54px)] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-40">
             {/* Top nav */}
-            <div className="flex items-center justify-between px-5 pt-2">
+            <div className="flex items-center justify-between px-5 pt-4">
               <Link to="/search" aria-label="Back" style={circleBtn()} className="flex items-center justify-center">
                 <ArrowLeft size={18} color="#111" />
               </Link>

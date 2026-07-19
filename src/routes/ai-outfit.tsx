@@ -25,9 +25,9 @@ function AIOutfit() {
     <PhoneFrame>
       <>
         <StatusBar />
-        <div className="relative h-[calc(100%-54px)] overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-40">
-            <div className="flex items-center justify-between px-5 pt-2">
+            <div className="flex items-center justify-between px-5 pt-4">
               <Link to="/ai-assistant" aria-label="Back" className="flex items-center justify-center" style={circle()}><ChevronLeft size={18} color="#111" /></Link>
               <div style={{ fontSize: 15.5, fontWeight: 600, color: "#111", letterSpacing: -0.3 }}>AI Outfit Builder</div>
               <button aria-label="History" style={circle()} className="flex items-center justify-center"><Clock size={16} color="#111" /></button>
