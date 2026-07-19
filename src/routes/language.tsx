@@ -38,32 +38,14 @@ function Index() {
 
   return (
     <main
-      className="min-h-screen w-full flex items-center justify-center p-6"
+      className="min-h-screen w-full relative overflow-hidden"
       style={{
-        background:
-          "radial-gradient(1200px 800px at 50% -10%, #F2F1EE 0%, #FAFAF8 40%, #F7F7F5 100%)",
+        background: "#FFFFFF",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif',
         color: "#111111",
       }}
     >
-      <div
-        className="relative"
-        style={{
-          width: 393,
-          height: 852,
-          borderRadius: 55,
-          padding: 12,
-          background:
-            "linear-gradient(145deg, #1a1a1c 0%, #0a0a0c 50%, #1a1a1c 100%)",
-          boxShadow:
-            "0 60px 120px -30px rgba(20, 20, 30, 0.35), 0 30px 60px -20px rgba(20, 20, 30, 0.25), inset 0 0 0 1.5px rgba(255,255,255,0.08)",
-        }}
-      >
-        <div
-          className="relative overflow-hidden w-full h-full"
-          style={{ borderRadius: 44, background: "#FFFFFF" }}
-        >
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0"
@@ -74,7 +56,8 @@ function Index() {
             }}
           />
 
-          <div className="relative h-[calc(100%-54px)] flex flex-col">
+          <div className="relative min-h-screen flex flex-col">
+
             <div className="px-6 pt-6">
               <h1 style={{ fontSize: 30, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.9, color: "#111111", textAlign: "center" }}>
                 Choose your language
