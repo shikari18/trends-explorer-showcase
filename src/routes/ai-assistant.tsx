@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Clock, Plus, Mic, Camera, ArrowUp, GitCompare, Gift, Wand2, PackageSearch } from "lucide-react";
-import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
-import { BottomNav } from "@/components/phone/BottomNav";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Clock, Plus, Mic, Camera, ArrowUp, GitCompare, Gift, Wand2, PackageSearch, ArrowLeft } from "lucide-react";
+import { PhoneFrame, StatusBar } from "@/components/phone/PhoneFrame";
+
 
 export const Route = createFileRoute("/ai-assistant")({
   component: AI,
