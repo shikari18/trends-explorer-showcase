@@ -9,7 +9,7 @@ export const Route = createFileRoute("/payment")({
   head: () => ({ meta: [{ title: "Trends — Payment" }] }),
 });
 
-type Method = "apple" | "google" | "visa";
+type Method = "apple" | "google" | "visa" | "momo" | "telecel";
 
 function Payment() {
   const [method, setMethod] = useState<Method>("apple");
@@ -39,6 +39,12 @@ function Payment() {
                 logo={<AppleLogo />} title="Apple Pay" subtitle="Fast and secure checkout." />
               <MethodCard active={method === "google"} onClick={() => setMethod("google")}
                 logo={<GoogleLogo />} title="Google Pay" subtitle="Pay using your Google account." />
+              <MethodCard active={method === "momo"} onClick={() => setMethod("momo")}
+                logo={<MoMoLogo />} title="MTN MoMo" subtitle="Pay with Mobile Money." />
+              {method === "momo" && <PhoneInput label="MTN MoMo number" placeholder="024 XXX XXXX" />}
+              <MethodCard active={method === "telecel"} onClick={() => setMethod("telecel")}
+                logo={<TelecelLogo />} title="Telecel Cash" subtitle="Pay with Telecel Cash." />
+              {method === "telecel" && <PhoneInput label="Telecel Cash number" placeholder="027 XXX XXXX" />}
               <MethodCard active={method === "visa"} onClick={() => setMethod("visa")}
                 logo={<div style={{ fontWeight: 900, fontSize: 15, color: "#1A1F71", fontStyle: "italic", letterSpacing: -0.5 }}>VISA</div>}
                 title="•••• 4827" subtitle="Expires 08/29 · Victor Mensah"
@@ -152,6 +158,53 @@ function MethodCard({ active, onClick, logo, title, subtitle, right }: { active:
         ? <div className="flex items-center justify-center" style={{ width: 22, height: 22, borderRadius: 999, background: "#0F62FE" }}><Check size={13} color="#fff" strokeWidth={3} /></div>
         : <div style={{ width: 22, height: 22, borderRadius: 999, boxShadow: "inset 0 0 0 1.5px rgba(17,17,17,0.15)" }} />)}
     </button>
+  );
+}
+
+function PhoneInput({ label, placeholder }: { label: string; placeholder: string }) {
+  return (
+    <div className="px-1">
+      <div
+        className="flex items-center gap-3 px-4"
+        style={{
+          height: 52, borderRadius: 16,
+          background: "#F7F7F5",
+          boxShadow: "inset 0 0 0 1.5px rgba(15,98,254,0.35)",
+        }}
+      >
+        <div style={{ fontSize: 12, color: "#8A8A8A", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</div>
+        <input
+          type="tel"
+          placeholder={placeholder}
+          className="flex-1 bg-transparent outline-none text-right"
+          style={{ fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: 0.5 }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MoMoLogo() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="20" fill="#FFCC00" />
+      <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle"
+        style={{ fontSize: 11, fontWeight: 800, fill: "#1A1A1A", fontFamily: "sans-serif" }}>
+        MoMo
+      </text>
+    </svg>
+  );
+}
+
+function TelecelLogo() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="20" fill="#E30613" />
+      <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle"
+        style={{ fontSize: 9, fontWeight: 800, fill: "#FFFFFF", fontFamily: "sans-serif" }}>
+        TCEL
+      </text>
+    </svg>
   );
 }
 
