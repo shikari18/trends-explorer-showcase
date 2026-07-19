@@ -140,13 +140,9 @@ function Index() {
               >
                 Continue
               </button>
-              <div className="flex justify-center mt-4">
-                <div style={{ width: 134, height: 5, borderRadius: 3, background: "#111111" }} />
-              </div>
             </div>
           </div>
-        </div>
-      </div>
     </main>
+
   );
 }
