@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, Mic, Camera, Heart, ArrowUpRight, ShoppingCart, Check, Loader2 } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
@@ -20,7 +20,8 @@ export const Route = createFileRoute("/home")({
 const BRANDS = ["Apple", "Nike", "Adidas", "Sony", "Samsung", "Dyson"];
 
 function Home() {
-  const [activeCat, setActiveCat] = useState("Women's Clothing");
+  const navigate = useNavigate();
+  const [activeCat, setActiveCat] = useState("Random");
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [addedToCartIds, setAddedToCartIds] = useState<string[]>([]);
 
@@ -161,15 +162,21 @@ function Home() {
 
             {/* Search */}
             <div className="px-6 mt-5">
-              <div className="flex items-center gap-2.5 pl-4 pr-2"
-                style={{ height: 54, borderRadius: 24, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -14px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)" }}>
+              <div 
+                onClick={() => navigate({ to: "/search" })}
+                className="flex items-center gap-2.5 pl-4 pr-2 w-full cursor-pointer select-none"
+                style={{ height: 54, borderRadius: 24, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -14px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)" }}
+              >
                 <Search size={18} strokeWidth={2} color="#8A8A8A" />
-                <input placeholder="Search products, brands..." className="flex-1 bg-transparent outline-none min-w-0"
-                  style={{ fontSize: 15, color: "#111111", letterSpacing: -0.1 }} />
+                <div className="flex-1 text-left" style={{ fontSize: 15, color: "#8A8A8A", letterSpacing: -0.1 }}>
+                  Search products, brands...
+                </div>
                 <IconCircle><Mic size={16} strokeWidth={2} color="#111" /></IconCircle>
-                <Link to="/visual-search" aria-label="Visual search">
-                  <IconCircle accent><Camera size={16} strokeWidth={2} color="#fff" /></IconCircle>
-                </Link>
+                <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="relative z-10">
+                  <Link to="/visual-search" aria-label="Visual search">
+                    <IconCircle accent><Camera size={16} strokeWidth={2} color="#fff" /></IconCircle>
+                  </Link>
+                </div>
               </div>
             </div>
 
@@ -257,12 +264,12 @@ function Home() {
                   {recommended.map((p) => {
                     const isAdded = addedToCartIds.includes(p.id);
                     return (
-                      <div key={p.id} className="overflow-hidden"
+                      <Link to="/product/$id" params={{ id: p.id }} key={p.id} className="overflow-hidden block"
                         style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative">
                           <img src={p.img} alt={p.name} loading="lazy" className="w-full object-cover" style={{ aspectRatio: "4/5" }} />
                           <button onClick={(e) => addToCart(p, e)} aria-label="Add to cart"
-                            className="absolute bottom-2.5 right-2.5 flex items-center justify-center transition-all"
+                            className="absolute bottom-2.5 right-2.5 flex items-center justify-center transition-all z-10"
                             style={{ width: 29, height: 29, borderRadius: 999, background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)", transition: "background-color 0.3s ease" }}>
                             {isAdded ? <Check size={12} color="#fff" strokeWidth={3} /> : <ShoppingCart size={12} color="#111" strokeWidth={2.2} />}
                           </button>
@@ -271,7 +278,7 @@ function Home() {
                           <div style={{ fontSize: 13.5, fontWeight: 600, color: "#111" }}>{p.name}</div>
                           <div className="mt-0.5" style={{ fontSize: 13, color: "#666" }}>{p.price}</div>
                         </div>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>

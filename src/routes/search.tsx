@@ -38,6 +38,35 @@ function SearchScreen() {
     "Gaming Mouse",
   ]);
 
+  const startVoiceSearch = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      import("sonner").then(({ toast }) => toast.error("Voice search not supported on this browser."));
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    import("sonner").then(({ toast }) => {
+      toast.info("Listening... Speak now.", { id: "voice-search" });
+      
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setQuery(transcript);
+        toast.success(`Voice search: "${transcript}"`, { id: "voice-search" });
+      };
+
+      recognition.onerror = () => {
+        toast.error("Speech recognition failed. Try again.", { id: "voice-search" });
+      };
+
+      recognition.start();
+    });
+  };
+
   const filteredSuggested = query.trim().length > 0
     ? PRODUCTS.filter((p) =>
         p.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -88,7 +117,8 @@ function SearchScreen() {
                   style={{ fontSize: 14.5, color: "#111", letterSpacing: -0.1 }}
                 />
                 <button
-                  className="flex items-center justify-center shrink-0"
+                  onClick={startVoiceSearch}
+                  className="flex items-center justify-center shrink-0 cursor-pointer active:scale-95 transition-all"
                   style={{
                     width: 36,
                     height: 36,
@@ -112,11 +142,13 @@ function SearchScreen() {
                   subtitle="Find products using your camera."
                 />
               </Link>
-              <QuickAction
-                icon={<Mic size={20} strokeWidth={2} color="#0F62FE" />}
-                title="Voice Search"
-                subtitle="Search naturally with your voice."
-              />
+              <button onClick={startVoiceSearch} className="text-left w-full cursor-pointer">
+                <QuickAction
+                  icon={<Mic size={20} strokeWidth={2} color="#0F62FE" />}
+                  title="Voice Search"
+                  subtitle="Search naturally with your voice."
+                />
+              </button>
             </div>
 
             {/* Trending */}
@@ -205,9 +237,11 @@ function SearchScreen() {
               </h2>
               <div className="flex gap-3 overflow-x-auto px-6 mt-4" style={{ scrollbarWidth: "none" }}>
                 {filteredSuggested.map((p) => (
-                  <div
-                    key={p.name}
-                    className="shrink-0 overflow-hidden"
+                  <Link
+                    key={p.id || p.name}
+                    to="/product/$id"
+                    params={{ id: p.id }}
+                    className="shrink-0 overflow-hidden block"
                     style={{
                       width: 168,
                       borderRadius: 22,
@@ -220,7 +254,7 @@ function SearchScreen() {
                       <img src={p.img} alt={p.name} loading="lazy" className="w-full object-cover" style={{ aspectRatio: "1 / 1" }} />
                       <button
                         aria-label="Save"
-                        className="absolute top-2.5 right-2.5 flex items-center justify-center"
+                        className="absolute top-2.5 right-2.5 flex items-center justify-center z-10"
                         style={{
                           width: 30,
                           height: 30,
@@ -244,7 +278,7 @@ function SearchScreen() {
                         {p.price}
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>

@@ -19,8 +19,9 @@ function Checkout() {
   }, []);
 
   const subtotal = cartItems.reduce((s: number, i: any) => s + i.price * i.qty, 0);
+  const shipping = 30;
   const tax = Math.round(subtotal * 0.075);
-  const total = subtotal + tax;
+  const total = subtotal + tax + shipping;
   return (
     <PhoneFrame>
       <>
@@ -82,7 +83,7 @@ function Checkout() {
                     <div style={{ fontSize: 11.5, color: "#666" }}>2–4 Business Days</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#34C759" }}>Free</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>₵30</div>
                     <div className="flex items-center justify-center" style={{ width: 20, height: 20, borderRadius: 999, background: "#0F62FE" }}>
                       <Check size={12} color="#fff" strokeWidth={3} />
                     </div>
@@ -100,7 +101,7 @@ function Checkout() {
                 </div>
                 <div className="mt-3 space-y-2" style={{ fontSize: 13.5 }}>
                   <Row label="Subtotal" value={`₵${subtotal.toLocaleString()}`} />
-                  <Row label="Shipping" value={<span style={{ color: "#34C759", fontWeight: 700 }}>Free</span>} />
+                  <Row label="Shipping" value={`₵${shipping.toLocaleString()}`} />
                   <Row label="Tax" value={`₵${tax.toLocaleString()}`} />
                 </div>
                 <div className="my-3" style={{ height: 1, background: "rgba(17,17,17,0.06)" }} />

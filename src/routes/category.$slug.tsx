@@ -311,9 +311,11 @@ function CategoryDetail() {
                     const isLiked = wishlist.includes(p.id);
                     const isAdded = addedToCartIds.includes(p.id);
                     return (
-                      <div
+                      <Link
                         key={p.id}
-                        className="overflow-hidden"
+                        to="/product/$id"
+                        params={{ id: p.id }}
+                        className="overflow-hidden block"
                         style={{
                           borderRadius: 22,
                           background: "#FFFFFF",
@@ -332,7 +334,7 @@ function CategoryDetail() {
                           <button
                             onClick={(e) => toggleWishlist(p.id, e)}
                             aria-label="Wishlist"
-                            className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300"
+                            className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
                             style={{
                               width: 30,
                               height: 30,
@@ -370,7 +372,7 @@ function CategoryDetail() {
                             <button
                               onClick={(e) => addToCart(p, e)}
                               aria-label="Add to cart"
-                              className="flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                              className="flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer z-10"
                               style={{
                                 width: 29,
                                 height: 29,
@@ -389,7 +391,7 @@ function CategoryDetail() {
                             </button>
                           </div>
                         </div>
-                      </div>
+                      </Link>
                     );
                   })}
             </div>

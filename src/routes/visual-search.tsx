@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ArrowLeft, Image as ImageIcon, Zap, ZapOff, Sparkles, RotateCcw } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Zap, ZapOff, Sparkles, RotateCcw, Key, Settings, AlertCircle, ShoppingCart, Check } from "lucide-react";
 import { PhoneFrame, HomeIndicator } from "@/components/phone/PhoneFrame";
+import { searchCJProducts, CJProduct } from "@/lib/cjApi";
 
 export const Route = createFileRoute("/visual-search")({
   component: VisualSearch,
@@ -25,9 +26,22 @@ function VisualSearch() {
   const [scanning, setScanning] = useState(false);
   const [detected, setDetected] = useState(false);
 
+  // AI & Matching state
+  const [geminiKey, setGeminiKey] = useState("");
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [matchedProducts, setMatchedProducts] = useState<CJProduct[]>([]);
+  const [addedToCartIds, setAddedToCartIds] = useState<string[]>([]);
+
+  // Load key from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setGeminiKey(localStorage.getItem("gemini_api_key") || "");
+    }
+  }, []);
+
   const startCamera = useCallback(async (facing: "environment" | "user") => {
     setStatus("loading");
-    // Stop any existing stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -44,16 +58,10 @@ function VisualSearch() {
         await videoRef.current.play();
       }
 
-      // Check torch support
       const track = stream.getVideoTracks()[0];
       const caps = track.getCapabilities?.() as any;
       setTorchSupported(!!(caps?.torch));
-
       setStatus("live");
-
-      // Auto-simulate scan after 2s for demo purposes
-      setTimeout(() => setScanning(true), 800);
-      setTimeout(() => setDetected(true), 2800);
     } catch (err: any) {
       if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
         setStatus("denied");
@@ -83,15 +91,154 @@ function VisualSearch() {
   const flipCamera = () => {
     setDetected(false);
     setScanning(false);
+    setSearchError("");
+    setMatchedProducts([]);
     setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
   };
 
-  const handleGallery = () => fileInputRef.current?.click();
+  const saveGeminiKey = (key: string) => {
+    localStorage.setItem("gemini_api_key", key);
+    setGeminiKey(key);
+    setShowKeyModal(false);
+  };
+
+  // Perform AI analysis and matching
+  const captureAndAnalyze = async (base64Image?: string) => {
+    setScanning(true);
+    setDetected(false);
+    setSearchError("");
+    setMatchedProducts([]);
+
+    try {
+      let base64Data = base64Image;
+
+      // If no file picked, capture frame from video camera
+      if (!base64Data && videoRef.current) {
+        const canvas = document.createElement("canvas");
+        canvas.width = videoRef.current.videoWidth || 640;
+        canvas.height = videoRef.current.videoHeight || 480;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas context creation failed");
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        base64Data = canvas.toDataURL("image/jpeg").split(",")[1];
+      }
+
+      if (!base64Data) {
+        setSearchError("No image stream to scan.");
+        setScanning(false);
+        return;
+      }
+
+      // If no key entered, fallback to smart simulation using local products catalog
+      if (!geminiKey) {
+        setTimeout(async () => {
+          const { PRODUCTS } = await import("@/lib/products");
+          // Grab 1-2 random items from local catalog
+          const count = 1 + Math.floor(Math.random() * 2);
+          const shuffled = [...PRODUCTS].sort(() => 0.5 - Math.random());
+          const selection = shuffled.slice(0, count);
+          
+          if (selection.length > 0) {
+            setMatchedProducts(selection as any[]);
+            setDetected(true);
+          } else {
+            setSearchError("No items available in store.");
+          }
+          setScanning(false);
+        }, 1500);
+        return;
+      }
+
+      // Send frame to Gemini 1.5 Flash Vision API
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const response = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: "Identify the product/item shown in this image. Respond with ONLY 1 to 2 descriptive search keywords (e.g. 'shoes', 'watch', 'bag', 'sunglasses', 'shirt'). Do not include brands, punctuation, or extra words." },
+                {
+                  inlineData: {
+                    mimeType: "image/jpeg",
+                    data: base64Data
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      const detectedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      console.log("AI Detected keywords:", detectedText);
+
+      if (!detectedText) {
+        setSearchError("AI could not identify item.");
+        setScanning(false);
+        return;
+      }
+
+      // Search matching products in catalog
+      const { products: matches } = await searchCJProducts(detectedText, 1, 4);
+
+      if (matches && matches.length > 0) {
+        setMatchedProducts(matches);
+        setDetected(true);
+      } else {
+        setSearchError(`Detected "${detectedText}" but it is not available in our store.`);
+      }
+    } catch (err) {
+      console.error("AI scanning error:", err);
+      setSearchError("Vision API query failed.");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = (reader.result as string).split(",")[1];
+      captureAndAnalyze(base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGalleryClick = () => fileInputRef.current?.click();
+
+  const addToCart = (p: CJProduct, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("cart");
+      let items = saved ? JSON.parse(saved) : [];
+      const existing = items.find((it: any) => it.id === p.id);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        items.push({
+          id: p.id, brand: p.brand, name: p.name,
+          color: "Default", size: "One Size",
+          price: p.rawPrice, img: p.img, qty: 1,
+        });
+      }
+      localStorage.setItem("cart", JSON.stringify(items));
+      setAddedToCartIds((prev) => [...prev, p.id]);
+      setTimeout(() => setAddedToCartIds((prev) => prev.filter((x) => x !== p.id)), 1500);
+      import("sonner").then(({ toast }) => toast.success(`${p.name} added to cart!`));
+    }
+  };
 
   return (
     <PhoneFrame>
       <>
-        {/* Real camera video */}
+        {/* Camera stream */}
         <video
           ref={videoRef}
           aria-hidden
@@ -101,272 +248,308 @@ function VisualSearch() {
           style={{ background: "#000" }}
         />
 
-        {/* Darkening overlay */}
+        {/* Scan line overlay */}
         <div
           aria-hidden
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "linear-gradient(180deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.15) 65%, rgba(0,0,0,0.72) 100%)",
+              "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.15) 65%, rgba(0,0,0,0.75) 100%)",
           }}
         />
 
-        {/* Loading / denied / error states */}
+        {/* Camera loading/error views */}
         {status === "loading" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: "rgba(0,0,0,0.75)" }}>
-            <div className="w-10 h-10 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", letterSpacing: -0.1 }}>Starting camera…</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20" style={{ background: "rgba(0,0,0,0.85)" }}>
+            <div className="w-9 h-9 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>Initializing Camera…</span>
           </div>
         )}
 
         {status === "denied" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: "rgba(0,0,0,0.85)" }}>
-            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)", border: "1.5px solid rgba(255,255,255,0.2)" }}>
-              <ImageIcon size={28} color="rgba(255,255,255,0.6)" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center z-20" style={{ background: "rgba(0,0,0,0.9)" }}>
+            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)" }}>
+              <ImageIcon size={24} color="rgba(255,255,255,0.7)" />
             </div>
             <div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: -0.4 }}>Camera Access Denied</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 6, lineHeight: 1.5 }}>
-                Please allow camera access in your browser settings to use Visual Search.
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Camera Permission Needed</div>
+              <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.5)", marginTop: 6, lineHeight: 1.5 }}>
+                Please allow camera access in your browser settings to scan items.
               </div>
             </div>
             <button
               onClick={() => startCamera(facingMode)}
-              style={{ height: 42, padding: "0 24px", borderRadius: 999, background: "#0F62FE", fontSize: 13.5, fontWeight: 600, color: "#fff" }}
+              style={{ height: 40, padding: "0 22px", borderRadius: 999, background: "#0F62FE", fontSize: 13, fontWeight: 600, color: "#fff" }}
             >
-              Try Again
+              Allow Camera
             </button>
           </div>
         )}
 
-        {status === "error" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: "rgba(0,0,0,0.85)" }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: -0.4 }}>Camera Unavailable</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>Your device may not support camera access in this context.</div>
-            <button onClick={() => startCamera(facingMode)} style={{ height: 42, padding: "0 24px", borderRadius: 999, background: "#0F62FE", fontSize: 13.5, fontWeight: 600, color: "#fff" }}>
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/* Hidden file input for gallery */}
+        {/* Hidden inputs */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
           className="hidden"
-          aria-label="Pick from gallery"
-          onChange={() => { setScanning(true); setTimeout(() => setDetected(true), 1500); }}
+          onChange={handleGallerySelect}
         />
 
-        <div className="relative" style={{ color: "#fff", height: "100%", display: "flex", flexDirection: "column" }}>
-          {/* Top nav */}
+        {/* UI Overlay Container */}
+        <div className="relative z-10 flex flex-col justify-between h-full text-white">
+          {/* Top navigation */}
           <div className="flex items-center justify-between px-5 pt-14">
-            <Link to="/search" className="flex items-center justify-center" aria-label="Back" style={{ ...glass(), width: 40, height: 40, borderRadius: 999 }}>
-              <ArrowLeft size={18} strokeWidth={2} color="#fff" />
+            <Link to="/search" className="flex items-center justify-center" aria-label="Back" style={glassStyle}>
+              <ArrowLeft size={18} strokeWidth={2.2} color="#fff" />
             </Link>
-            <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: -0.3, color: "#fff" }}>Visual Search</div>
+            <div style={{ fontSize: 15.5, fontWeight: 600, color: "#fff", letterSpacing: -0.2 }}>AI Visual Search</div>
             <button
-              aria-label="Pick from gallery"
-              onClick={handleGallery}
-              style={{ ...glass(), width: 40, height: 40, borderRadius: 999 }}
+              onClick={() => setShowKeyModal(true)}
+              style={{ ...glassStyle, background: geminiKey ? "rgba(52,199,89,0.25)" : "rgba(255,255,255,0.14)" }}
               className="flex items-center justify-center"
+              aria-label="API Key settings"
             >
-              <ImageIcon size={17} strokeWidth={2} color="#fff" />
+              <Key size={17} strokeWidth={2} color={geminiKey ? "#34C759" : "#fff"} />
             </button>
           </div>
 
-          {/* Scanner frame — centred in remaining space */}
-          <div className="flex-1 flex items-center justify-center">
+          {/* Scanner viewfinder frame */}
+          <div className="flex-1 flex items-center justify-center p-6">
             <div
-              className="relative"
+              className="relative transition-all"
               style={{
-                width: 300,
-                height: 360,
-                borderRadius: 32,
-                boxShadow: "inset 0 0 0 1.5px rgba(255,255,255,0.55), 0 0 0 1px rgba(15,98,254,0.25), 0 30px 80px -30px rgba(15,98,254,0.4)",
+                width: 270,
+                height: 320,
+                borderRadius: 28,
+                boxShadow: scanning 
+                  ? "inset 0 0 0 2px #0F62FE, 0 0 40px rgba(15,98,254,0.4)"
+                  : "inset 0 0 0 1.5px rgba(255,255,255,0.5)",
                 background: "rgba(255,255,255,0.02)",
-                overflow: "hidden",
+                overflow: "hidden"
               }}
             >
-              {/* Corner brackets */}
-              {([
-                { top: 10, left: 10, borderTop: 2, borderLeft: 2 },
-                { top: 10, right: 10, borderTop: 2, borderRight: 2 },
-                { bottom: 10, left: 10, borderBottom: 2, borderLeft: 2 },
-                { bottom: 10, right: 10, borderBottom: 2, borderRight: 2 },
-              ] as const).map((c, i) => (
+              {/* Bracket corners */}
+              {[
+                { top: 10, left: 10, borderTop: 3, borderLeft: 3 },
+                { top: 10, right: 10, borderTop: 3, borderRight: 3 },
+                { bottom: 10, left: 10, borderBottom: 3, borderLeft: 3 },
+                { bottom: 10, right: 10, borderBottom: 3, borderRight: 3 },
+              ].map((b, i) => (
                 <div
                   key={i}
                   className="absolute"
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 6,
-                    borderColor: "#fff",
+                    width: 18,
+                    height: 18,
+                    borderColor: scanning ? "#0F62FE" : "#fff",
                     borderStyle: "solid",
-                    borderTopWidth: (c as any).borderTop ?? 0,
-                    borderRightWidth: (c as any).borderRight ?? 0,
-                    borderBottomWidth: (c as any).borderBottom ?? 0,
-                    borderLeftWidth: (c as any).borderLeft ?? 0,
-                    ...(c as any),
+                    borderTopWidth: b.borderTop || 0,
+                    borderLeftWidth: b.borderLeft || 0,
+                    borderBottomWidth: b.borderBottom || 0,
+                    borderRightWidth: b.borderRight || 0,
+                    top: b.top,
+                    left: b.left,
+                    right: b.right,
+                    bottom: b.bottom,
+                    borderRadius: 4
                   }}
                 />
               ))}
 
-              {/* Animated scan line */}
-              {scanning && !detected && (
+              {/* Scanning indicator */}
+              {scanning && (
                 <div
                   className="absolute left-0 right-0"
                   style={{
-                    height: 2,
-                    background: "linear-gradient(90deg, rgba(15,98,254,0) 0%, rgba(15,98,254,0.95) 50%, rgba(15,98,254,0) 100%)",
-                    boxShadow: "0 0 22px 2px rgba(15,98,254,0.7)",
-                    animation: "scanline 1.8s ease-in-out infinite",
-                    top: "0%",
+                    height: 3,
+                    background: "linear-gradient(90deg, rgba(15,98,254,0) 0%, rgba(15,98,254,0.9) 50%, rgba(15,98,254,0) 100%)",
+                    boxShadow: "0 0 15px #0F62FE",
+                    animation: "scanline 2s infinite ease-in-out",
+                    top: "0%"
                   }}
                 />
               )}
 
-              {/* AI Detecting / Detected badge */}
+              {/* Center status badge */}
               <div
                 className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3"
                 style={{
-                  top: 16,
-                  height: 28,
+                  top: 14,
+                  height: 26,
                   borderRadius: 999,
-                  background: "rgba(255,255,255,0.9)",
-                  backdropFilter: "blur(16px)",
-                  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.6)",
-                  whiteSpace: "nowrap",
+                  background: "rgba(0,0,0,0.65)",
+                  backdropFilter: "blur(12px)",
+                  whiteSpace: "nowrap"
                 }}
               >
-                <Sparkles size={11} strokeWidth={2.4} color="#0F62FE" />
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#111", letterSpacing: -0.1 }}>
-                  {detected ? "Product Found!" : scanning ? "AI Scanning…" : "Point at a product"}
+                <Sparkles size={11} color="#0F62FE" />
+                <span style={{ fontSize: 11, fontWeight: 600 }}>
+                  {scanning ? "AI analyzing..." : detected ? "Item matched!" : "Point & scan"}
                 </span>
               </div>
+            </div>
+          </div>
 
-              {/* Detected glow border */}
-              {detected && (
+          {/* Results card overlay */}
+          {(detected || searchError) && (
+            <div className="px-5 pb-4">
+              {searchError ? (
                 <div
-                  className="absolute inset-0"
+                  className="flex items-center gap-3 p-4"
                   style={{
-                    borderRadius: 32,
-                    boxShadow: "inset 0 0 0 2px rgba(15,98,254,0.9)",
-                    animation: "pulse-border 1.2s ease-in-out infinite",
+                    borderRadius: 20,
+                    background: "rgba(0,0,0,0.8)",
+                    backdropFilter: "blur(20px)",
+                    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.15)"
                   }}
-                />
+                >
+                  <AlertCircle size={20} color="#FF3B30" className="shrink-0" />
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>
+                    {searchError}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="p-4"
+                  style={{
+                    borderRadius: 24,
+                    background: "rgba(255,255,255,0.92)",
+                    backdropFilter: "blur(28px)",
+                    boxShadow: "0 20px 40px -15px rgba(0,0,0,0.5), inset 0 0 0 1px #fff"
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "#0F62FE", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                      Scan Results
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#34C759" }}>
+                      Matched
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-2.5">
+                    {matchedProducts.map((p) => {
+                      const isAdded = addedToCartIds.includes(p.id);
+                      return (
+                        <Link
+                          key={p.id}
+                          to="/product/$id"
+                          params={{ id: p.id }}
+                          className="flex items-center gap-3 p-2 transition-colors hover:bg-slate-100/50 rounded-xl"
+                          style={{ border: "1px solid rgba(17,17,17,0.06)", background: "#fff" }}
+                        >
+                          <img src={p.img} alt={p.name} className="w-12 h-12 object-cover rounded-lg" />
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate" style={{ fontSize: 13.5, fontWeight: 700, color: "#111" }}>{p.name}</div>
+                            <div style={{ fontSize: 11.5, color: "#8A8A8A" }}>{p.brand}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{p.price}</span>
+                            <button
+                              onClick={(e) => addToCart(p, e)}
+                              className="flex items-center justify-center z-10 shrink-0"
+                              style={{
+                                width: 26,
+                                height: 26,
+                                borderRadius: 999,
+                                background: isAdded ? "#34C759" : "rgba(17,17,17,0.05)"
+                              }}
+                            >
+                              {isAdded ? <Check size={11} color="#fff" strokeWidth={3} /> : <ShoppingCart size={11} color="#111" />}
+                            </button>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-
-          {/* Detected product card */}
-          {detected && (
-            <div className="px-5 pb-4">
-              <div
-                className="p-4"
-                style={{
-                  borderRadius: 24,
-                  background: "rgba(255,255,255,0.88)",
-                  backdropFilter: "blur(28px) saturate(160%)",
-                  boxShadow: "0 20px 60px -20px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.6)",
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div style={{ fontSize: 10.5, fontWeight: 600, color: "#0F62FE", letterSpacing: 0.4, textTransform: "uppercase" }}>Detected Product</div>
-                  <div className="flex items-center gap-1 px-2" style={{ height: 22, borderRadius: 999, background: "rgba(15,98,254,0.10)" }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "#0F62FE", letterSpacing: -0.1 }}>92% Match</span>
-                  </div>
-                </div>
-                <div className="mt-1.5" style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>Luxury Leather Tote</div>
-                <div className="mt-3 flex items-end justify-between">
-                  <div>
-                    <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.2, fontWeight: 600, textTransform: "uppercase" }}>Saint Laurent</div>
-                    <div className="mt-1" style={{ fontSize: 16, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>₵2,450</div>
-                  </div>
-                  <Link
-                    to="/product"
-                    className="inline-flex items-center px-4"
-                    style={{ height: 40, borderRadius: 999, background: "#0F62FE", fontSize: 13.5, fontWeight: 600, color: "#fff", letterSpacing: -0.2, boxShadow: "0 10px 24px -10px rgba(15,98,254,0.6)" }}
-                  >
-                    View Product
-                  </Link>
-                </div>
-              </div>
-            </div>
           )}
 
-          {/* Bottom controls */}
+          {/* Bottom actions panel */}
           <div className="flex items-center justify-center gap-8 pb-14 pt-4">
             <button
-              aria-label="Pick from gallery"
-              onClick={handleGallery}
+              onClick={handleGalleryClick}
               className="flex items-center justify-center"
-              style={{ ...glass(), width: 54, height: 54, borderRadius: 999 }}
+              style={{ ...glassStyle, width: 54, height: 54 }}
+              aria-label="Upload gallery file"
             >
-              <ImageIcon size={20} strokeWidth={2} color="#fff" />
+              <ImageIcon size={20} color="#fff" />
             </button>
 
-            {/* Shutter */}
+            {/* Scanning shutter */}
             <button
-              aria-label="Capture"
-              onClick={() => { setScanning(true); setTimeout(() => setDetected(true), 1500); }}
-              className="flex items-center justify-center"
+              onClick={() => captureAndAnalyze()}
+              disabled={scanning}
+              className="flex items-center justify-center cursor-pointer active:scale-95 transition-all"
               style={{
-                width: 82,
-                height: 82,
+                width: 80,
+                height: 80,
                 borderRadius: 999,
-                background: "rgba(255,255,255,0.95)",
-                boxShadow: "0 20px 40px -14px rgba(0,0,0,0.5), inset 0 0 0 4px rgba(255,255,255,0.35), 0 0 0 2px rgba(255,255,255,0.9)",
+                background: scanning ? "#0F62FE" : "rgba(255,255,255,0.95)",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.3)"
               }}
+              aria-label="Capture & Search"
             >
-              <div style={{ width: 62, height: 62, borderRadius: 999, background: "#fff" }} />
+              <div style={{ width: 60, height: 60, borderRadius: 999, border: "2px solid #fff", background: scanning ? "#0F62FE" : "transparent" }} />
             </button>
 
-            {/* Torch or Flip */}
-            {torchSupported ? (
-              <button
-                aria-label="Toggle torch"
-                onClick={toggleTorch}
-                className="flex items-center justify-center"
-                style={{ ...glass(), width: 54, height: 54, borderRadius: 999, background: torch ? "rgba(255,220,0,0.25)" : undefined }}
-              >
-                {torch ? <ZapOff size={20} strokeWidth={2} color="#FFD700" /> : <Zap size={20} strokeWidth={2} color="#fff" />}
-              </button>
-            ) : (
-              <button
-                aria-label="Flip camera"
-                onClick={flipCamera}
-                className="flex items-center justify-center"
-                style={{ ...glass(), width: 54, height: 54, borderRadius: 999 }}
-              >
-                <RotateCcw size={20} strokeWidth={2} color="#fff" />
-              </button>
-            )}
-          </div>
-
-          {/* Hint */}
-          {!detected && (
-            <div
-              className="absolute left-8 right-8 text-center"
-              style={{ bottom: 52, fontSize: 11.5, color: "rgba(255,255,255,0.7)", letterSpacing: -0.1, lineHeight: 1.5 }}
+            <button
+              onClick={flipCamera}
+              className="flex items-center justify-center"
+              style={{ ...glassStyle, width: 54, height: 54 }}
+              aria-label="Flip camera direction"
             >
-              Point your camera at any product to instantly identify it.
-            </div>
-          )}
+              <RotateCcw size={20} color="#fff" />
+            </button>
+          </div>
         </div>
 
-        {/* Scan animation keyframes */}
+        {/* Gemini API Key setup modal overlay */}
+        {showKeyModal && (
+          <div className="absolute inset-0 flex items-center justify-center z-50 p-6" style={{ background: "rgba(0,0,0,0.7)" }}>
+            <div className="w-full max-w-[320px] p-5 rounded-3xl text-left bg-white text-slate-800 shadow-2xl">
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>Gemini API Key</div>
+              <p className="mt-1" style={{ fontSize: 12, color: "#666", lineHeight: 1.4 }}>
+                Enter your Google AI Studio Gemini API key to activate AI Visual Search. (Leave empty to use mock demo mode).
+              </p>
+              <input
+                type="password"
+                placeholder="AIzaSy..."
+                defaultValue={geminiKey}
+                id="gemini-input-field"
+                className="w-full mt-3 px-3 py-2 border rounded-xl outline-none"
+                style={{ fontSize: 13.5 }}
+              />
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={() => setShowKeyModal(false)}
+                  className="flex-1 py-2 border rounded-xl text-center"
+                  style={{ fontSize: 13, fontWeight: 600 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const val = (document.getElementById("gemini-input-field") as HTMLInputElement)?.value || "";
+                    saveGeminiKey(val);
+                  }}
+                  className="flex-1 py-2 rounded-xl text-center bg-blue-600 text-white font-semibold"
+                  style={{ fontSize: 13 }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <style>{`
           @keyframes scanline {
-            0%   { top: 8%; }
-            50%  { top: 88%; }
-            100% { top: 8%; }
-          }
-          @keyframes pulse-border {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: 0.4; }
+            0%   { top: 4%; }
+            50%  { top: 92%; }
+            100% { top: 4%; }
           }
         `}</style>
 
@@ -376,10 +559,11 @@ function VisualSearch() {
   );
 }
 
-function glass() {
-  return {
-    background: "rgba(255,255,255,0.14)",
-    backdropFilter: "blur(24px) saturate(160%)",
-    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.22)",
-  } as const;
-}
+const glassStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 999,
+  background: "rgba(255,255,255,0.14)",
+  backdropFilter: "blur(24px) saturate(160%)",
+  boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.22)",
+};
