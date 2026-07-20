@@ -314,7 +314,7 @@ function CategoryDetail() {
                       <Link
                         key={p.id}
                         to="/product/$id"
-                        params={{ id: p.id }}
+                        params={{ id: p.cjId }}
                         className="overflow-hidden block"
                         style={{
                           borderRadius: 22,

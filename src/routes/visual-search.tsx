@@ -432,7 +432,7 @@ function VisualSearch() {
                         <Link
                           key={p.id}
                           to="/product/$id"
-                          params={{ id: p.id }}
+                          params={{ id: p.cjId }}
                           className="flex items-center gap-3 p-2 transition-colors hover:bg-slate-100/50 rounded-xl"
                           style={{ border: "1px solid rgba(17,17,17,0.06)", background: "#fff" }}
                         >

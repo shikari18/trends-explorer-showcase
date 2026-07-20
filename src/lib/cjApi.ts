@@ -271,69 +271,77 @@ export function getProductById(id: string): CJProduct | null {
 }
 
 /**
- * Fetch full product detail live from CJ API
+ * Fetch full product detail live from CJ API.
+ * Accepts EITHER a local cache ID (cj-women-s-clothing-1) OR a raw CJ PID (numeric/UUID).
+ * This means clicking any product — whether from cache or live API — always works.
  */
 export async function fetchProductDetail(
-  localId: string
+  idOrCjId: string
 ): Promise<CJProductDetail | null> {
-  const cached = getProductById(localId);
-  if (!cached) return null;
+  // Try local cache first (for cached products with generated IDs)
+  const cached = getProductById(idOrCjId)
+    // Also try looking up by cjId (the raw CJ PID passed from live API products)
+    ?? ALL_CACHED_PRODUCTS.find((p) => p.cjId === idOrCjId)
+    ?? null;
+
+  // The actual CJ PID to query — either from cache or the raw ID itself
+  const cjPid = cached?.cjId ?? idOrCjId;
+
+  // Deterministic brand/rating from the cjId so they're always stable
+  const brandIdx = Math.abs(
+    cjPid.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+  ) % BRANDS.length;
+  const fallbackBrand = BRANDS[brandIdx];
+  const fallbackRating = parseFloat((4.0 + (brandIdx % 10) / 10).toFixed(1));
+  const fallbackReviews = (200 + (brandIdx * 31)).toLocaleString();
 
   try {
-    const data = await serverFetchProductDetail({ data: cached.cjId });
+    const data = await serverFetchProductDetail({ data: cjPid });
     const d = data.data;
 
     if (!d) {
-      return {
-        ...cached,
-        images: [cached.img],
-        videoUrl: null,
-        description: cached.name,
-        category: "",
-        variants: [],
-      };
+      if (cached) {
+        return { ...cached, images: [cached.img], videoUrl: null, description: cached.name, category: "", variants: [] };
+      }
+      return null;
     }
 
     const imageSet: string[] = [];
     if (Array.isArray(d.productImage)) {
-      d.productImage.forEach((img: string) => {
-        if (img && !imageSet.includes(img)) imageSet.push(img);
-      });
+      d.productImage.forEach((img: string) => { if (img && !imageSet.includes(img)) imageSet.push(img); });
     } else if (typeof d.productImage === "string" && d.productImage) {
       imageSet.push(d.productImage);
     }
-
     if (Array.isArray(d.productImageSet)) {
-      d.productImageSet.forEach((img: string) => {
-        if (img && !imageSet.includes(img)) imageSet.push(img);
-      });
+      d.productImageSet.forEach((img: string) => { if (img && !imageSet.includes(img)) imageSet.push(img); });
     }
-    if (imageSet.length === 0) imageSet.push(cached.img);
+    if (imageSet.length === 0 && cached) imageSet.push(cached.img);
 
     const usdPrice = parseFloat(d.sellPrice || d.productPrice || "10");
     const ghsPrice = Math.round(usdPrice * EXCHANGE_RATE * MARKUP);
 
     return {
-      ...cached,
-      name: d.productNameEn || cached.name,
+      id: idOrCjId,
+      cjId: d.pid || cjPid,
+      brand: cached?.brand ?? fallbackBrand,
+      name: d.productNameEn || cached?.name || "Product",
       price: `₵${ghsPrice.toLocaleString()}`,
       rawPrice: ghsPrice,
-      img: imageSet[0],
+      img: imageSet[0] || cached?.img || "",
+      rating: cached?.rating ?? fallbackRating,
+      reviews: cached?.reviews ?? fallbackReviews,
       images: imageSet,
       videoUrl: d.productVideo || null,
-      description: d.description || d.productNameEn || cached.name,
+      description: d.description || d.productNameEn || cached?.name || "",
       category: d.categoryName || "",
       variants: d.variants || [],
     };
   } catch (err) {
-    console.error("Live detail fetch failed, falling back to cached single view:", err);
-    return {
-      ...cached,
-      images: [cached.img],
-      videoUrl: null,
-      description: cached.name,
-      category: "",
-      variants: [],
-    };
+    console.error("Live detail fetch failed:", err);
+    if (cached) {
+      return { ...cached, images: [cached.img], videoUrl: null, description: cached.name, category: "", variants: [] };
+    }
+    return null;
   }
 }
+

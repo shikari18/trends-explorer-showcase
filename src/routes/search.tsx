@@ -240,7 +240,7 @@ function SearchScreen() {
                   <Link
                     key={p.id || p.name}
                     to="/product/$id"
-                    params={{ id: p.id }}
+                    params={{ id: p.cjId }}
                     className="shrink-0 overflow-hidden block"
                     style={{
                       width: 168,
