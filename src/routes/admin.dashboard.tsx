@@ -1,4 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+
+// Reset auth on sign out
+let _authed = false;
+export function resetAdminAuth() { _authed = false; }
 import { useState } from "react";
 import {
   ShoppingBag, Users, Package, TrendingUp, CheckCircle,
@@ -113,7 +117,7 @@ function AdminDashboard() {
           </div>
         </div>
         <button
-          onClick={() => navigate({ to: "/admin" })}
+          onClick={() => { _authed = false; navigate({ to: "/admin" }); }}
           style={{
             display: "flex", alignItems: "center", gap: 6,
             fontSize: 13, fontWeight: 600, color: "#FF3B30",

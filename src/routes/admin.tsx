@@ -1,16 +1,31 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useState } from "react";
 import { Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin")({
-  component: AdminLogin,
+  component: AdminLayout,
   head: () => ({ meta: [{ title: "Trends — Admin" }] }),
 });
 
 const FONT =
   '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif';
 
-function AdminLogin() {
+// Store auth state outside component so it persists across renders
+let _authed = false;
+
+function AdminLayout() {
+  const [authed, setAuthed] = useState(_authed);
+
+  if (!authed) {
+    return <AdminLogin onSuccess={() => { _authed = true; setAuthed(true); }} />;
+  }
+
+  // Once authed, render child routes (dashboard etc.)
+  return <Outlet />;
+}
+
+function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -19,6 +34,7 @@ function AdminLogin() {
 
   const submit = () => {
     if (password === "obed123") {
+      onSuccess();
       navigate({ to: "/admin/dashboard" });
     } else {
       setError(true);
@@ -41,7 +57,6 @@ function AdminLogin() {
         padding: "0 24px",
       }}
     >
-      {/* Ambient glow */}
       <div
         aria-hidden
         style={{
@@ -54,16 +69,11 @@ function AdminLogin() {
       />
 
       <div style={{ width: "100%", maxWidth: 400, position: "relative" }}>
-        {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <div
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 64,
-              height: 64,
-              borderRadius: 20,
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 64, height: 64, borderRadius: 20,
               background: "#0F62FE",
               boxShadow: "0 12px 30px -8px rgba(15,98,254,0.45)",
               marginBottom: 16,
@@ -79,7 +89,6 @@ function AdminLogin() {
           </div>
         </div>
 
-        {/* Card */}
         <div
           style={{
             borderRadius: 28,
@@ -96,8 +105,7 @@ function AdminLogin() {
           <div
             className="flex items-center gap-2 mt-2 px-4"
             style={{
-              height: 52,
-              borderRadius: 16,
+              height: 52, borderRadius: 16,
               background: "#F7F7F5",
               boxShadow: error
                 ? "inset 0 0 0 1.5px rgba(255,59,48,0.6)"
@@ -129,13 +137,9 @@ function AdminLogin() {
             onClick={submit}
             className="w-full flex items-center justify-center mt-5"
             style={{
-              height: 52,
-              borderRadius: 16,
-              background: "#0F62FE",
-              color: "#fff",
-              fontSize: 15,
-              fontWeight: 700,
-              letterSpacing: -0.2,
+              height: 52, borderRadius: 16,
+              background: "#0F62FE", color: "#fff",
+              fontSize: 15, fontWeight: 700, letterSpacing: -0.2,
               boxShadow: "0 12px 24px -8px rgba(15,98,254,0.45)",
             }}
           >
