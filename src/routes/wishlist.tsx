@@ -135,7 +135,7 @@ function Wishlist() {
                 {wishlistedItems.map((p) => {
                   const isAdded = addedToCartIds.includes(p.id);
                   return (
-                    <Link key={p.id} to="/product"
+                    <Link key={p.id} to="/product/$id" params={{ id: p.id }}
                       className="overflow-hidden block active:scale-[0.98] transition-all"
                       style={{
                         borderRadius: 22, background: "#fff",

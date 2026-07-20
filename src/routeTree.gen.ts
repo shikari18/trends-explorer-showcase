@@ -39,6 +39,7 @@ import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as BrandSlugRouteImport } from './routes/brand.$slug'
 import { Route as CategorySlugRouteImport } from './routes/category.$slug'
+import { Route as ProductIdRouteImport } from './routes/product.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -190,6 +191,11 @@ const CategorySlugRoute = CategorySlugRouteImport.update({
   path: '/category/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductIdRoute = ProductIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProductRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -209,7 +215,7 @@ export interface FileRoutesByFullPath {
   '/order-success': typeof OrderSuccessRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
-  '/product': typeof ProductRoute
+  '/product': typeof ProductRouteWithChildren
   '/profile': typeof ProfileRoute
   '/referral': typeof ReferralRoute
   '/search': typeof SearchRoute
@@ -222,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/product/$id': typeof ProductIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -241,7 +248,7 @@ export interface FileRoutesByTo {
   '/order-success': typeof OrderSuccessRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
-  '/product': typeof ProductRoute
+  '/product': typeof ProductRouteWithChildren
   '/profile': typeof ProfileRoute
   '/referral': typeof ReferralRoute
   '/search': typeof SearchRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/product/$id': typeof ProductIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -274,7 +282,7 @@ export interface FileRoutesById {
   '/order-success': typeof OrderSuccessRoute
   '/orders': typeof OrdersRoute
   '/payment': typeof PaymentRoute
-  '/product': typeof ProductRoute
+  '/product': typeof ProductRouteWithChildren
   '/profile': typeof ProfileRoute
   '/referral': typeof ReferralRoute
   '/search': typeof SearchRoute
@@ -287,6 +295,7 @@ export interface FileRoutesById {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/product/$id': typeof ProductIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
+    | '/product/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
+    | '/product/$id'
   id:
     | '__root__'
     | '/'
@@ -385,6 +396,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
+    | '/product/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -405,7 +417,7 @@ export interface RootRouteChildren {
   OrderSuccessRoute: typeof OrderSuccessRoute
   OrdersRoute: typeof OrdersRoute
   PaymentRoute: typeof PaymentRoute
-  ProductRoute: typeof ProductRoute
+  ProductRoute: typeof ProductRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   ReferralRoute: typeof ReferralRoute
   SearchRoute: typeof SearchRoute
@@ -631,6 +643,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategorySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/product/$id': {
+      id: '/product/$id'
+      path: '/$id'
+      fullPath: '/product/$id'
+      preLoaderRoute: typeof ProductIdRouteImport
+      parentRoute: typeof ProductRoute
+    }
   }
 }
 
@@ -643,6 +662,17 @@ const AdminRouteChildren: AdminRouteChildren = {
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface ProductRouteChildren {
+  ProductIdRoute: typeof ProductIdRoute
+}
+
+const ProductRouteChildren: ProductRouteChildren = {
+  ProductIdRoute: ProductIdRoute,
+}
+
+const ProductRouteWithChildren =
+  ProductRoute._addFileChildren(ProductRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -662,7 +692,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrderSuccessRoute: OrderSuccessRoute,
   OrdersRoute: OrdersRoute,
   PaymentRoute: PaymentRoute,
-  ProductRoute: ProductRoute,
+  ProductRoute: ProductRouteWithChildren,
   ProfileRoute: ProfileRoute,
   ReferralRoute: ReferralRoute,
   SearchRoute: SearchRoute,

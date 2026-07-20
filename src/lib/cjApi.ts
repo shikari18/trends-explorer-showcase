@@ -56,6 +56,109 @@ export interface CJProduct {
   reviews: string;
 }
 
+export interface CJProductDetail extends CJProduct {
+  images: string[];      // all product images
+  videoUrl: string | null;
+  description: string;
+  category: string;
+}
+
+// Lookup a cached product by its local ID
+export function getProductById(id: string): CJProduct | null {
+  return ALL_PRODUCTS.find((p) => p.id === id) || null;
+}
+
+const API_KEY = "CJ5632497@api@dd88d4a73e5d4f07905c86c16f263276";
+const AUTH_URL = "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken";
+
+let _token: string | null = null;
+let _tokenFetchedAt = 0;
+
+async function getToken(): Promise<string> {
+  const now = Date.now();
+  if (_token && now - _tokenFetchedAt < 23 * 60 * 60 * 1000) return _token;
+  try {
+    const res = await fetch(AUTH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: API_KEY }),
+    });
+    const data = await res.json();
+    if (data.result && data.data?.accessToken) {
+      _token = data.data.accessToken;
+      _tokenFetchedAt = now;
+      return _token!;
+    }
+  } catch {}
+  throw new Error("CJ auth failed");
+}
+
+/**
+ * Fetch full product detail from CJ API by cjId (pid).
+ * Returns images array, video URL, description, etc.
+ */
+export async function fetchProductDetail(
+  localId: string
+): Promise<CJProductDetail | null> {
+  const cached = getProductById(localId);
+  if (!cached) return null;
+
+  try {
+    const token = await getToken();
+    const res = await fetch(
+      `https://developers.cjdropshipping.com/api2.0/v1/product/queryByPid?pid=${cached.cjId}`,
+      { headers: { "CJ-Access-Token": token } }
+    );
+    const data = await res.json();
+    const d = data.data;
+
+    if (!d) {
+      // Return cached data with single image if API fails
+      return {
+        ...cached,
+        images: [cached.img],
+        videoUrl: null,
+        description: cached.name,
+        category: "",
+      };
+    }
+
+    // Build image array — main + extras
+    const imageSet: string[] = [];
+    if (d.productImage) imageSet.push(d.productImage);
+    if (Array.isArray(d.productImageSet)) {
+      d.productImageSet.forEach((img: string) => {
+        if (img && !imageSet.includes(img)) imageSet.push(img);
+      });
+    }
+    if (imageSet.length === 0) imageSet.push(cached.img);
+
+    const usdPrice = parseFloat(d.sellPrice || d.productPrice || "10");
+    const ghsPrice = Math.round(usdPrice * EXCHANGE_RATE * MARKUP);
+
+    return {
+      ...cached,
+      name: d.productNameEn || cached.name,
+      price: `₵${ghsPrice.toLocaleString()}`,
+      rawPrice: ghsPrice,
+      img: imageSet[0],
+      images: imageSet,
+      videoUrl: d.productVideo || null,
+      description: d.description || d.productNameEn || cached.name,
+      category: d.categoryName || "",
+    };
+  } catch {
+    // Fallback to cached
+    return {
+      ...cached,
+      images: [cached.img],
+      videoUrl: null,
+      description: cached.name,
+      category: "",
+    };
+  }
+}
+
 // Flat array of all products across all categories
 const ALL_PRODUCTS: CJProduct[] = Object.values(
   (cjCache.products || {}) as Record<string, CJProduct[]>
