@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronLeft, SlidersHorizontal, Heart, Star, ChevronDown, ShoppingCart, Check, Loader2 } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
@@ -25,7 +25,7 @@ function CategoryDetail() {
   const navigate = useNavigate();
   
   // Map slug back to exact CJ category name
-  const categoryName = (import.meta.env.DEV ? "" : "") || (() => {
+  const categoryName = (() => {
     const SLUG_MAP: Record<string, string> = {
       "womens-clothing": "Women's Clothing",
       "pet-supplies": "Pet Supplies",

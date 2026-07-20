@@ -91,12 +91,12 @@ function Cart() {
                         style={{ height: 28, borderRadius: 999, background: "#F7F7F5", padding: "0 2px" }}
                       >
                         <button onClick={() => setItems((p) => p.map((x) => x.id === it.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x))}
-                          style={{ width: 24, height: 24, borderRadius: 999, display: "flex", alignItems: "center", justify: "center" }}>
+                          style={{ width: 24, height: 24, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <Minus size={12} color="#111" />
                         </button>
                         <span style={{ minWidth: 20, textAlign: "center", fontSize: 12.5, fontWeight: 700, color: "#111" }}>{it.qty}</span>
                         <button onClick={() => setItems((p) => p.map((x) => x.id === it.id ? { ...x, qty: x.qty + 1 } : x))}
-                          style={{ width: 24, height: 24, borderRadius: 999, background: "#0F62FE", display: "flex", alignItems: "center", justify: "center" }}>
+                          style={{ width: 24, height: 24, borderRadius: 999, background: "#0F62FE", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <Plus size={12} color="#fff" />
                         </button>
                       </div>
@@ -105,7 +105,7 @@ function Cart() {
                   <button
                     onClick={() => setItems((p) => p.filter((x) => x.id !== it.id))}
                     aria-label="Remove"
-                    style={{ width: 28, height: 28, borderRadius: 999, background: "#F7F7F5", display: "flex", alignItems: "center", justify: "center", alignSelf: "flex-start" }}
+                    style={{ width: 28, height: 28, borderRadius: 999, background: "#F7F7F5", display: "flex", alignItems: "center", justifyContent: "center", alignSelf: "flex-start" }}
                   >
                     <X size={13} color="#8A8A8A" />
                   </button>
