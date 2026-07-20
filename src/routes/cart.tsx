@@ -3,22 +3,12 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Trash2, Gift, Minus, Plus, X, Check, ShieldCheck, Truck, BadgeCheck } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
-import tote from "@/assets/prod-tote.jpg";
-import watch from "@/assets/home-watch.jpg";
-import headphones from "@/assets/home-headphones.jpg";
-import wallet from "@/assets/prod-wallet.jpg";
-import sunglasses from "@/assets/prod-sunglasses.jpg";
+import { PRODUCTS } from "@/lib/products";
 
 export const Route = createFileRoute("/cart")({
   component: Cart,
   head: () => ({ meta: [{ title: "Trends — Shopping Cart" }] }),
 });
-
-const INITIAL = [
-  { id: "t", brand: "Saint Laurent", name: "Luxury Leather Tote", color: "Cream", size: "M", price: 2450, img: tote, qty: 1 },
-  { id: "w", brand: "Apple", name: "Watch Ultra 3", color: "Titanium", size: "49mm", price: 899, img: watch, qty: 1 },
-  { id: "h", brand: "Sony", name: "WH-1000XM6", color: "Black", size: "One", price: 449, img: headphones, qty: 1 },
-];
 
 function Cart() {
   const [items, setItems] = useState<any[]>([]);
@@ -30,8 +20,8 @@ function Cart() {
       if (saved) {
         setItems(JSON.parse(saved));
       } else {
-        setItems(INITIAL);
-        localStorage.setItem("cart", JSON.stringify(INITIAL));
+        setItems([]);
+        localStorage.setItem("cart", JSON.stringify([]));
       }
       setMounted(true);
     }
@@ -46,6 +36,9 @@ function Cart() {
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
   const tax = Math.round(subtotal * 0.075);
   const total = subtotal + tax;
+
+  // Pull recommended items dynamically from the parsed products list
+  const recommendedItems = PRODUCTS.slice(4, 7);
 
   return (
     <PhoneFrame>
@@ -68,11 +61,11 @@ function Cart() {
               <div className="mt-1 flex items-center gap-2" style={{ fontSize: 13, color: "#666" }}>
                 <span style={{ fontWeight: 600 }}>{items.length} Items</span>
                 <span style={{ width: 3, height: 3, borderRadius: 999, background: "#C9C9C7" }} />
-                <span>Est. delivery 2–4 business days</span>
+                <span>₵{total.toLocaleString()} total</span>
               </div>
             </div>
 
-            {/* Items */}
+            {/* Cart Items */}
             <div className="px-5 mt-5 space-y-3">
               {items.map((it) => (
                 <div
@@ -81,7 +74,7 @@ function Cart() {
                   style={{
                     borderRadius: 22,
                     background: "#fff",
-                    boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)",
+                    boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 10px 24px -14px rgba(17,17,17,0.1), inset 0 0 0 1px rgba(17,17,17,0.04)",
                   }}
                 >
                   <div style={{ width: 76, height: 76, borderRadius: 18, overflow: "hidden", background: "#F7F7F5", flexShrink: 0 }}>
@@ -98,12 +91,12 @@ function Cart() {
                         style={{ height: 28, borderRadius: 999, background: "#F7F7F5", padding: "0 2px" }}
                       >
                         <button onClick={() => setItems((p) => p.map((x) => x.id === it.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x))}
-                          style={{ width: 24, height: 24, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          style={{ width: 24, height: 24, borderRadius: 999, display: "flex", alignItems: "center", justify: "center" }}>
                           <Minus size={12} color="#111" />
                         </button>
                         <span style={{ minWidth: 20, textAlign: "center", fontSize: 12.5, fontWeight: 700, color: "#111" }}>{it.qty}</span>
                         <button onClick={() => setItems((p) => p.map((x) => x.id === it.id ? { ...x, qty: x.qty + 1 } : x))}
-                          style={{ width: 24, height: 24, borderRadius: 999, background: "#0F62FE", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          style={{ width: 24, height: 24, borderRadius: 999, background: "#0F62FE", display: "flex", alignItems: "center", justify: "center" }}>
                           <Plus size={12} color="#fff" />
                         </button>
                       </div>
@@ -112,7 +105,7 @@ function Cart() {
                   <button
                     onClick={() => setItems((p) => p.filter((x) => x.id !== it.id))}
                     aria-label="Remove"
-                    style={{ width: 28, height: 28, borderRadius: 999, background: "#F7F7F5", display: "flex", alignItems: "center", justifyContent: "center", alignSelf: "flex-start" }}
+                    style={{ width: 28, height: 28, borderRadius: 999, background: "#F7F7F5", display: "flex", alignItems: "center", justify: "center", alignSelf: "flex-start" }}
                   >
                     <X size={13} color="#8A8A8A" />
                   </button>
@@ -164,11 +157,7 @@ function Cart() {
                 <div style={{ fontSize: 17, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>You May Also Like</div>
               </div>
               <div className="mt-3 flex gap-3 overflow-x-auto px-5" style={{ scrollbarWidth: "none" }}>
-                {[
-                  { name: "Leather Wallet", price: "₵540", img: wallet },
-                  { name: "AirPods Pro", price: "₵249", img: headphones },
-                  { name: "Sunglasses", price: "₵380", img: sunglasses },
-                ].map((p) => (
+                {recommendedItems.map((p) => (
                   <div key={p.name} className="shrink-0" style={{ width: 148, borderRadius: 20, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)", overflow: "hidden" }}>
                     <img src={p.img} alt={p.name} className="w-full object-cover" style={{ aspectRatio: "1/1" }} />
                     <div className="px-3 py-2.5">
@@ -196,7 +185,7 @@ function Cart() {
           >
             <div className="flex-1">
               <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.3, fontWeight: 600, textTransform: "uppercase" }}>Total</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>${total.toLocaleString()}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>₵{total.toLocaleString()}</div>
             </div>
             <Link
               to="/checkout"

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { ArrowLeft, ShieldCheck, MapPin, Truck, Package, Check } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 
@@ -8,6 +9,18 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function Checkout() {
+  const [cartItems, setCartItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("cart");
+      setCartItems(saved ? JSON.parse(saved) : []);
+    }
+  }, []);
+
+  const subtotal = cartItems.reduce((s: number, i: any) => s + i.price * i.qty, 0);
+  const tax = Math.round(subtotal * 0.075);
+  const total = subtotal + tax;
   return (
     <PhoneFrame>
       <>
@@ -83,17 +96,17 @@ function Checkout() {
               <Card>
                 <div className="flex items-center justify-between">
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>Order Summary</div>
-                  <div style={{ fontSize: 12, color: "#666" }}>3 Items</div>
+                  <div style={{ fontSize: 12, color: "#666" }}>{cartItems.length} Items</div>
                 </div>
                 <div className="mt-3 space-y-2" style={{ fontSize: 13.5 }}>
-                  <Row label="Subtotal" value="₵3,798" />
+                  <Row label="Subtotal" value={`₵${subtotal.toLocaleString()}`} />
                   <Row label="Shipping" value={<span style={{ color: "#34C759", fontWeight: 700 }}>Free</span>} />
-                  <Row label="Tax" value="₵285" />
+                  <Row label="Tax" value={`₵${tax.toLocaleString()}`} />
                 </div>
                 <div className="my-3" style={{ height: 1, background: "rgba(17,17,17,0.06)" }} />
                 <div className="flex items-center justify-between">
                   <span style={{ fontSize: 14, color: "#666" }}>Total</span>
-                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>₵4,083</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>₵{total.toLocaleString()}</span>
                 </div>
               </Card>
             </div>
@@ -150,7 +163,7 @@ function Checkout() {
           >
             <div className="flex-1">
               <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.3, fontWeight: 600, textTransform: "uppercase" }}>Total</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>₵4,083</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>₵{total.toLocaleString()}</div>
             </div>
             <Link
               to="/payment"

@@ -3,10 +3,7 @@ import { useState } from "react";
 import { Search as SearchIcon, Mic, Camera, Clock, X, Heart } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
-import watch from "@/assets/home-watch.jpg";
-import wallet from "@/assets/prod-wallet.jpg";
-import camera from "@/assets/prod-camera.jpg";
-import sneaker from "@/assets/home-sneaker.jpg";
+import { PRODUCTS } from "@/lib/products";
 
 export const Route = createFileRoute("/search")({
   component: SearchScreen,
@@ -29,20 +26,24 @@ const TRENDING = [
   "Apple Accessories",
 ];
 
-const SUGGESTED = [
-  { name: "Watch Ultra 2", brand: "Apple", price: "₵799", img: watch },
-  { name: "Monogram Wallet", brand: "Louis Vuitton", price: "₵540", img: wallet },
-  { name: "Alpha 7 IV", brand: "Sony", price: "₵2,498", img: camera },
-  { name: "Air Max Runner", brand: "Nike", price: "₵180", img: sneaker },
-];
+// Dynamically load suggested items from CJ cache
+const SUGGESTED = PRODUCTS.slice(0, 4);
 
 function SearchScreen() {
+  const [query, setQuery] = useState("");
   const [recent, setRecent] = useState([
-    "Sony WH-1000XM6",
-    "Leather Messenger Bag",
-    "Dyson Airwrap",
-    "AirPods Pro",
+    "Hooded Jacket",
+    "Leather Handbag",
+    "Wireless Headphones",
+    "Gaming Mouse",
   ]);
+
+  const filteredSuggested = query.trim().length > 0
+    ? PRODUCTS.filter((p) =>
+        p.name.toLowerCase().includes(query.toLowerCase()) ||
+        p.brand.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 8)
+    : SUGGESTED;
 
   return (
     <PhoneFrame>
@@ -80,6 +81,8 @@ function SearchScreen() {
                 <SearchIcon size={18} strokeWidth={2} color="#8A8A8A" />
                 <input
                   autoFocus={false}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search products, brands, or collections..."
                   className="flex-1 bg-transparent outline-none min-w-0"
                   style={{ fontSize: 14.5, color: "#111", letterSpacing: -0.1 }}
@@ -201,7 +204,7 @@ function SearchScreen() {
                 Suggested for You
               </h2>
               <div className="flex gap-3 overflow-x-auto px-6 mt-4" style={{ scrollbarWidth: "none" }}>
-                {SUGGESTED.map((p) => (
+                {filteredSuggested.map((p) => (
                   <div
                     key={p.name}
                     className="shrink-0 overflow-hidden"
