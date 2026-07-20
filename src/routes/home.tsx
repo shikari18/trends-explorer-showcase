@@ -20,7 +20,7 @@ export const Route = createFileRoute("/home")({
 const BRANDS = ["Apple", "Nike", "Adidas", "Sony", "Samsung", "Dyson"];
 
 function Home() {
-  const [activeCat, setActiveCat] = useState("Fashion");
+  const [activeCat, setActiveCat] = useState("Women's Clothing");
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [addedToCartIds, setAddedToCartIds] = useState<string[]>([]);
 
