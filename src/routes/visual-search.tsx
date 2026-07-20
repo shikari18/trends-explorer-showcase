@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ArrowLeft, Image as ImageIcon, Zap, ZapOff, Sparkles, RotateCcw, Key, Settings, AlertCircle, ShoppingCart, Check } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Sparkles, RotateCcw, AlertCircle, ShoppingCart, Check } from "lucide-react";
 import { PhoneFrame, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { searchCJProducts, CJProduct } from "@/lib/cjApi";
+
+// Gemini API key — loaded from env var VITE_GEMINI_KEY (set on Render.com)
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_KEY as string || "";
 
 export const Route = createFileRoute("/visual-search")({
   component: VisualSearch,
@@ -27,18 +30,9 @@ function VisualSearch() {
   const [detected, setDetected] = useState(false);
 
   // AI & Matching state
-  const [geminiKey, setGeminiKey] = useState("");
-  const [showKeyModal, setShowKeyModal] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [matchedProducts, setMatchedProducts] = useState<CJProduct[]>([]);
   const [addedToCartIds, setAddedToCartIds] = useState<string[]>([]);
-
-  // Load key from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setGeminiKey(localStorage.getItem("gemini_api_key") || "");
-    }
-  }, []);
 
   const startCamera = useCallback(async (facing: "environment" | "user") => {
     setStatus("loading");
@@ -96,12 +90,6 @@ function VisualSearch() {
     setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
   };
 
-  const saveGeminiKey = (key: string) => {
-    localStorage.setItem("gemini_api_key", key);
-    setGeminiKey(key);
-    setShowKeyModal(false);
-  };
-
   // Perform AI analysis and matching
   const captureAndAnalyze = async (base64Image?: string) => {
     setScanning(true);
@@ -129,8 +117,8 @@ function VisualSearch() {
         return;
       }
 
-      // If no key entered, fallback to smart simulation using local products catalog
-      if (!geminiKey) {
+      // If no key provided, fallback to smart demo mode
+      if (!GEMINI_KEY) {
         setTimeout(async () => {
           const { PRODUCTS } = await import("@/lib/products");
           // Grab 1-2 random items from local catalog
@@ -150,7 +138,7 @@ function VisualSearch() {
       }
 
       // Send frame to Gemini 1.5 Flash Vision API
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
       const response = await fetch(geminiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -304,12 +292,12 @@ function VisualSearch() {
             </Link>
             <div style={{ fontSize: 15.5, fontWeight: 600, color: "#fff", letterSpacing: -0.2 }}>AI Visual Search</div>
             <button
-              onClick={() => setShowKeyModal(true)}
-              style={{ ...glassStyle, background: geminiKey ? "rgba(52,199,89,0.25)" : "rgba(255,255,255,0.14)" }}
+              onClick={() => handleGalleryClick()}
+              style={glassStyle}
               className="flex items-center justify-center"
-              aria-label="API Key settings"
+              aria-label="Upload from gallery"
             >
-              <Key size={17} strokeWidth={2} color={geminiKey ? "#34C759" : "#fff"} />
+              <ImageIcon size={17} strokeWidth={2} color="#fff" />
             </button>
           </div>
 
@@ -505,45 +493,6 @@ function VisualSearch() {
             </button>
           </div>
         </div>
-
-        {/* Gemini API Key setup modal overlay */}
-        {showKeyModal && (
-          <div className="absolute inset-0 flex items-center justify-center z-50 p-6" style={{ background: "rgba(0,0,0,0.7)" }}>
-            <div className="w-full max-w-[320px] p-5 rounded-3xl text-left bg-white text-slate-800 shadow-2xl">
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#111" }}>Gemini API Key</div>
-              <p className="mt-1" style={{ fontSize: 12, color: "#666", lineHeight: 1.4 }}>
-                Enter your Google AI Studio Gemini API key to activate AI Visual Search. (Leave empty to use mock demo mode).
-              </p>
-              <input
-                type="password"
-                placeholder="AIzaSy..."
-                defaultValue={geminiKey}
-                id="gemini-input-field"
-                className="w-full mt-3 px-3 py-2 border rounded-xl outline-none"
-                style={{ fontSize: 13.5 }}
-              />
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => setShowKeyModal(false)}
-                  className="flex-1 py-2 border rounded-xl text-center"
-                  style={{ fontSize: 13, fontWeight: 600 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    const val = (document.getElementById("gemini-input-field") as HTMLInputElement)?.value || "";
-                    saveGeminiKey(val);
-                  }}
-                  className="flex-1 py-2 rounded-xl text-center bg-blue-600 text-white font-semibold"
-                  style={{ fontSize: 13 }}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <style>{`
           @keyframes scanline {

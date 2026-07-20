@@ -70,10 +70,28 @@ const BRANDS = [
   "Armani","Valentino","Givenchy","Bottega Veneta","Celine","Off-White",
 ];
 
-// Flat array of cached fallback products
+// Flat array — all products from all categories (for search/lookups)
 const ALL_CACHED_PRODUCTS: CJProduct[] = Object.values(
   (cjCache.products || {}) as Record<string, CJProduct[]>
 ).flat();
+
+// Interleaved array — round-robin mix of all categories for the Random home feed.
+// Takes item [0] from each category, then item [1] from each, etc.
+// So the first 14 products are one from each category, the next 14 are the second from each, etc.
+const INTERLEAVED_PRODUCTS: CJProduct[] = (() => {
+  const categoryArrays = Object.values(
+    (cjCache.products || {}) as Record<string, CJProduct[]>
+  ).filter(arr => arr.length > 0);
+  if (categoryArrays.length === 0) return [];
+  const maxLen = Math.max(...categoryArrays.map(arr => arr.length));
+  const result: CJProduct[] = [];
+  for (let i = 0; i < maxLen; i++) {
+    for (const arr of categoryArrays) {
+      if (i < arr.length) result.push(arr[i]);
+    }
+  }
+  return result;
+})();
 
 const API_KEY = "CJ5632497@api@dd88d4a73e5d4f07905c86c16f263276";
 const AUTH_URL = "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken";
@@ -146,11 +164,17 @@ export async function fetchCategoryPage(
 ): Promise<{ products: CJProduct[]; hasMore: boolean }> {
   try {
     const token = await getToken();
-    const catId = CATEGORY_MAP[category];
+    let catId = CATEGORY_MAP[category];
 
-    // If category is "Random", do not provide categoryId (gets mixed catalog)
-    const url = catId 
-      ? `${LIST_URL}?page=${page}&size=${pageSize}&categoryId=${catId}`
+    // For "Random" mode: rotate through all 14 categories by page number
+    // so each page fetches a different category → true live mixed feed
+    if (category === "Random") {
+      const allCatIds = Object.values(CATEGORY_MAP);
+      catId = allCatIds[(page - 1) % allCatIds.length];
+    }
+
+    const url = catId
+      ? `${LIST_URL}?page=${Math.ceil(page / Object.values(CATEGORY_MAP).length) || 1}&size=${pageSize}&categoryId=${catId}`
       : `${LIST_URL}?page=${page}&size=${pageSize}`;
 
     const data = await proxiedFetch(url, {
@@ -171,9 +195,9 @@ export async function fetchCategoryPage(
     };
   } catch (err) {
     console.error("Live category fetch failed, falling back to cache:", err);
-    // Fallback to local cache data if network/API limits hit
-    const list = category === "Random" 
-      ? ALL_CACHED_PRODUCTS
+    // Fallback to local cache
+    const list = category === "Random"
+      ? INTERLEAVED_PRODUCTS
       : ((cjCache.products || {}) as Record<string, CJProduct[]>)[category] || [];
       
     const start = (page - 1) * pageSize;
