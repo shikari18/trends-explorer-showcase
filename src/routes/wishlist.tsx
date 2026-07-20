@@ -161,9 +161,9 @@ function Wishlist() {
                           onClick={(e) => addToCart(p, e)}
                           aria-label="Add to cart"
                           className="flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                          style={{ width: 26, height: 26, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)" }}
+                          style={{ width: 29, height: 29, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)" }}
                         >
-                          <ShoppingCart size={11} color="#111" strokeWidth={2.2} />
+                          <ShoppingCart size={12} color="#111" strokeWidth={2.2} />
                         </button>
                       </div>
                     </div>
