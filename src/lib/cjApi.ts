@@ -1,7 +1,8 @@
-// CJ Dropshipping API client with dynamic CORS proxy bypass
-// Directly fetches live products from CJ API with infinite pagination.
-// No product cap — the full CJ catalog is available on demand.
+// CJ Dropshipping API client with TanStack Start Server Functions
+// Moves all third-party requests to the Node.js server to completely bypass CORS,
+// proxy limitations, and keep API key tokens secure.
 
+import { createServerFn } from "@tanstack/react-start";
 import cjCache from "./cjCache.json";
 
 export const EXCHANGE_RATE = 15.0;
@@ -77,8 +78,6 @@ const ALL_CACHED_PRODUCTS: CJProduct[] = Object.values(
 ).flat();
 
 // Interleaved array — round-robin mix of all categories for the Random home feed.
-// Takes item [0] from each category, then item [1] from each, etc.
-// So the first 14 products are one from each category, the next 14 are the second from each, etc.
 const INTERLEAVED_PRODUCTS: CJProduct[] = (() => {
   const categoryArrays = Object.values(
     (cjCache.products || {}) as Record<string, CJProduct[]>
@@ -101,33 +100,72 @@ const LIST_URL = "https://developers.cjdropshipping.com/api2.0/v1/product/listV2
 let _token: string | null = null;
 let _tokenFetchedAt = 0;
 
-// Helper to make proxied calls to bypass browser CORS
-async function proxiedFetch(url: string, options: RequestInit = {}): Promise<any> {
-  const proxiedUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-  const res = await fetch(proxiedUrl, options);
-  return res.json();
-}
+// SERVER FUNCTIONS — Runs strictly on the server-side to prevent browser CORS issues
 
-async function getToken(): Promise<string> {
+const serverGetToken = createServerFn({ method: "GET" }).handler(async () => {
   const now = Date.now();
   if (_token && now - _tokenFetchedAt < 23 * 60 * 60 * 1000) return _token;
 
   try {
-    const data = await proxiedFetch(AUTH_URL, {
+    const res = await fetch(AUTH_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ apiKey: API_KEY }),
     });
+    const data = await res.json();
     if (data.result && data.data?.accessToken) {
       _token = data.data.accessToken;
       _tokenFetchedAt = now;
       return _token!;
     }
   } catch (err) {
-    console.error("Token fetch error via proxy:", err);
+    console.error("Token fetch error on server:", err);
   }
-  throw new Error("CJ auth failed");
-}
+  throw new Error("CJ auth failed on server");
+});
+
+const serverFetchCategoryPage = createServerFn({ method: "GET" })
+  .validator((d: { category: string; page: number; pageSize: number }) => d)
+  .handler(async ({ data }) => {
+    const token = await serverGetToken();
+    let catId = CATEGORY_MAP[data.category];
+
+    // For "Random" mode: rotate through categories by page number
+    if (data.category === "Random") {
+      const allCatIds = Object.values(CATEGORY_MAP);
+      catId = allCatIds[(data.page - 1) % allCatIds.length];
+    }
+
+    const url = catId
+      ? `${LIST_URL}?page=${Math.ceil(data.page / Object.values(CATEGORY_MAP).length) || 1}&size=${data.pageSize}&categoryId=${catId}`
+      : `${LIST_URL}?page=${data.page}&size=${data.pageSize}`;
+
+    const res = await fetch(url, {
+      headers: { "CJ-Access-Token": token }
+    });
+    return res.json();
+  });
+
+const serverSearchCJProducts = createServerFn({ method: "GET" })
+  .validator((d: { query: string; page: number; pageSize: number }) => d)
+  .handler(async ({ data }) => {
+    const token = await serverGetToken();
+    const res = await fetch(`${LIST_URL}?page=${data.page}&size=${data.pageSize}&productName=${encodeURIComponent(data.query)}`, {
+      headers: { "CJ-Access-Token": token }
+    });
+    return res.json();
+  });
+
+const serverFetchProductDetail = createServerFn({ method: "GET" })
+  .validator((cjId: string) => cjId)
+  .handler(async ({ data: cjId }) => {
+    const token = await serverGetToken();
+    const res = await fetch(
+      `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${cjId}`,
+      { headers: { "CJ-Access-Token": token } }
+    );
+    return res.json();
+  });
 
 function mapItem(item: any, index: number, category: string, pageOffset: number): CJProduct | null {
   const img = item.bigImage || item.productImage;
@@ -156,7 +194,7 @@ function mapItem(item: any, index: number, category: string, pageOffset: number)
 }
 
 /**
- * Fetch a page of products live from CJ API (CORS bypassed)
+ * Fetch a page of products live from CJ API
  */
 export async function fetchCategoryPage(
   category: string,
@@ -164,24 +202,7 @@ export async function fetchCategoryPage(
   pageSize = 40
 ): Promise<{ products: CJProduct[]; hasMore: boolean }> {
   try {
-    const token = await getToken();
-    let catId = CATEGORY_MAP[category];
-
-    // For "Random" mode: rotate through all 14 categories by page number
-    // so each page fetches a different category → true live mixed feed
-    if (category === "Random") {
-      const allCatIds = Object.values(CATEGORY_MAP);
-      catId = allCatIds[(page - 1) % allCatIds.length];
-    }
-
-    const url = catId
-      ? `${LIST_URL}?page=${Math.ceil(page / Object.values(CATEGORY_MAP).length) || 1}&size=${pageSize}&categoryId=${catId}`
-      : `${LIST_URL}?page=${page}&size=${pageSize}`;
-
-    const data = await proxiedFetch(url, {
-      headers: { "CJ-Access-Token": token }
-    });
-
+    const data = await serverFetchCategoryPage({ data: { category, page, pageSize } });
     const content = data.data?.content || [];
     const list: any[] = content[0]?.productList || data.data?.list || [];
 
@@ -196,7 +217,6 @@ export async function fetchCategoryPage(
     };
   } catch (err) {
     console.error("Live category fetch failed, falling back to cache:", err);
-    // Fallback to local cache
     const list = category === "Random"
       ? INTERLEAVED_PRODUCTS
       : ((cjCache.products || {}) as Record<string, CJProduct[]>)[category] || [];
@@ -219,10 +239,7 @@ export async function searchCJProducts(
   pageSize = 40
 ): Promise<{ products: CJProduct[]; hasMore: boolean }> {
   try {
-    const token = await getToken();
-    const res = await proxiedFetch(`${LIST_URL}?page=${page}&size=${pageSize}&productName=${encodeURIComponent(query)}`, {
-      headers: { "CJ-Access-Token": token },
-    });
+    const res = await serverSearchCJProducts({ data: { query, page, pageSize } });
     const content = res.data?.content || [];
     const list: any[] = content[0]?.productList || res.data?.list || [];
 
@@ -263,11 +280,7 @@ export async function fetchProductDetail(
   if (!cached) return null;
 
   try {
-    const token = await getToken();
-    const data = await proxiedFetch(
-      `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${cached.cjId}`,
-      { headers: { "CJ-Access-Token": token } }
-    );
+    const data = await serverFetchProductDetail({ data: cached.cjId });
     const d = data.data;
 
     if (!d) {
@@ -320,6 +333,7 @@ export async function fetchProductDetail(
       videoUrl: null,
       description: cached.name,
       category: "",
+      variants: [],
     };
   }
 }

@@ -132,8 +132,8 @@ function VisualSearch() {
         }
       };
 
-      // If no valid Gemini key (typically starts with AIzaSy), run local fallback
-      if (!GEMINI_KEY || !GEMINI_KEY.startsWith("AIzaSy")) {
+      // If no valid Gemini key (starts with AIzaSy or AQ.), run local fallback
+      if (!GEMINI_KEY || (!GEMINI_KEY.startsWith("AIzaSy") && !GEMINI_KEY.startsWith("AQ."))) {
         setTimeout(async () => {
           await runFallback();
           setScanning(false);

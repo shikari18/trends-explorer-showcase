@@ -223,7 +223,13 @@ function ProductDetail() {
             {/* Top nav */}
             <div className="flex items-center justify-between px-5 pt-4">
               <button
-                onClick={() => navigate({ to: -1 as any })}
+                onClick={() => {
+                  if (typeof window !== "undefined" && window.history.length > 1) {
+                    window.history.back();
+                  } else {
+                    navigate({ to: "/home" });
+                  }
+                }}
                 aria-label="Back"
                 className="flex items-center justify-center"
                 style={circleBtnStyle}
