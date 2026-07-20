@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Play, Pause, Loader2, Box
 } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
-import { fetchProductDetail, CJProductDetail } from "@/lib/cjApi";
+import { fetchProductDetail, CJProductDetail, EXCHANGE_RATE, MARKUP } from "@/lib/cjApi";
 
 export const Route = createFileRoute("/product/$id")({
   component: ProductDetail,
@@ -30,6 +30,10 @@ function ProductDetail() {
   const [showVideo, setShowVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Variant selector states
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+
   useEffect(() => {
     setLoading(true);
     setActiveImg(0);
@@ -37,6 +41,7 @@ function ProductDetail() {
     fetchProductDetail(id).then((p) => {
       setProduct(p);
       setLoading(false);
+      
       if (typeof window !== "undefined") {
         const saved = localStorage.getItem("wishlist");
         const list = saved ? JSON.parse(saved) : [];
@@ -44,6 +49,29 @@ function ProductDetail() {
       }
     });
   }, [id]);
+
+  // Set default variants when product loads
+  useEffect(() => {
+    if (product?.variants && product.variants.length > 0) {
+      const colors: string[] = [];
+      const sizes: string[] = [];
+      product.variants.forEach((v: any) => {
+        const key = v.variantKey || "";
+        const parts = key.split("-");
+        if (parts[0] && !colors.includes(parts[0].trim())) {
+          colors.push(parts[0].trim());
+        }
+        if (parts[1] && !sizes.includes(parts[1].trim())) {
+          sizes.push(parts[1].trim());
+        }
+      });
+      if (colors.length > 0) setSelectedColor(colors[0]);
+      if (sizes.length > 0) setSelectedSize(sizes[0]);
+    } else {
+      setSelectedColor("");
+      setSelectedSize("");
+    }
+  }, [product]);
 
   const toggleWishlist = () => {
     if (!product) return;
@@ -58,22 +86,73 @@ function ProductDetail() {
     setWishlist(!wishlist);
   };
 
+  // Extract unique colors and sizes for display
+  const uniqueColors: string[] = [];
+  const uniqueSizes: string[] = [];
+  if (product?.variants) {
+    product.variants.forEach((v: any) => {
+      const key = v.variantKey || "";
+      const parts = key.split("-");
+      const colorVal = parts[0]?.trim();
+      const sizeVal = parts[1]?.trim();
+      if (colorVal && !uniqueColors.includes(colorVal)) uniqueColors.push(colorVal);
+      if (sizeVal && !uniqueSizes.includes(sizeVal)) uniqueSizes.push(sizeVal);
+    });
+  }
+
+  // Find active variant matching selected color & size
+  const matchedVariant = product?.variants?.find((v: any) => {
+    const key = v.variantKey || "";
+    const parts = key.split("-");
+    const colorVal = parts[0]?.trim() || "";
+    const sizeVal = parts[1]?.trim() || "";
+    const colorMatch = !selectedColor || colorVal === selectedColor;
+    const sizeMatch = !selectedSize || sizeVal === selectedSize;
+    return colorMatch && sizeMatch;
+  });
+
+  // Calculate dynamic GHS price of the selected variant
+  const activeUsdPrice = matchedVariant 
+    ? parseFloat(matchedVariant.variantSellPrice) 
+    : (product ? parseFloat(product.price.replace(/[^0-9.]/g, "")) / (EXCHANGE_RATE * MARKUP) : 10);
+  const activeGhsPrice = matchedVariant 
+    ? Math.round(activeUsdPrice * EXCHANGE_RATE * MARKUP) 
+    : (product ? product.rawPrice : 0);
+  const priceDisplay = `₵${activeGhsPrice.toLocaleString()}`;
+
+  const allMedia = product
+    ? [
+        ...product.images,
+        ...(product.videoUrl ? ["__video__"] : []),
+      ]
+    : [];
+
+  // Determine current active main image (selected variant image overrides index if active)
+  const activeImgUrl = (matchedVariant && matchedVariant.variantImage) 
+    ? matchedVariant.variantImage 
+    : (allMedia[activeImg] || product?.img || "");
+
   const addToCart = () => {
     if (!product) return;
     const saved = localStorage.getItem("cart");
     let items = saved ? JSON.parse(saved) : [];
-    const existing = items.find((i: any) => i.id === product.id);
+    const colorLabel = selectedColor || "Default";
+    const sizeLabel = selectedSize || "One Size";
+    const itemId = `${product.id}-${colorLabel}-${sizeLabel}`;
+
+    const existing = items.find((i: any) => i.id === itemId);
     if (existing) {
       existing.qty += 1;
     } else {
       items.push({
-        id: product.id,
+        id: itemId,
+        productId: product.id,
         brand: product.brand,
         name: product.name,
-        color: "Default",
-        size: "One Size",
-        price: product.rawPrice,
-        img: product.img,
+        color: colorLabel,
+        size: sizeLabel,
+        price: activeGhsPrice,
+        img: activeImgUrl,
         qty: 1,
       });
     }
@@ -82,13 +161,6 @@ function ProductDetail() {
     setTimeout(() => setAddedToCart(false), 2000);
     import("sonner").then(({ toast }) => toast.success("Added to cart!"));
   };
-
-  const allMedia = product
-    ? [
-        ...product.images,
-        ...(product.videoUrl ? ["__video__"] : []),
-      ]
-    : [];
 
   const handleVideoToggle = () => {
     if (!videoRef.current) return;
@@ -213,7 +285,7 @@ function ProductDetail() {
                   </div>
                 ) : (
                   <img
-                    src={allMedia[activeImg] as string || product.img}
+                    src={activeImgUrl}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
@@ -347,7 +419,7 @@ function ProductDetail() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: "#0F62FE", letterSpacing: 0.2 }}>CJ Verified</span>
                 </div>
               </div>
-              <h1 className="mt-1.5" style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111", lineHeight: 1.2 }}>
+              <h1 className="mt-1.5" style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.5, color: "#111", lineHeight: 1.25 }}>
                 {product.name}
               </h1>
               <div className="mt-2 flex items-center gap-2">
@@ -365,8 +437,8 @@ function ProductDetail() {
                 <span style={{ fontSize: 12.5, color: "#8A8A8A" }}>({product.reviews} Reviews)</span>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <div style={{ fontSize: 30, fontWeight: 700, color: "#111", letterSpacing: -0.9 }}>
-                  {product.price}
+                <div style={{ fontSize: 28, fontWeight: 700, color: "#111", letterSpacing: -0.8 }}>
+                  {priceDisplay}
                 </div>
                 <div className="inline-flex items-center gap-1.5">
                   <span style={{ width: 8, height: 8, borderRadius: 999, background: "#34C759", boxShadow: "0 0 0 3px rgba(52,199,89,0.18)" }} />
@@ -375,16 +447,79 @@ function ProductDetail() {
               </div>
             </div>
 
-            {/* Description */}
-            {product.description && product.description !== product.name && (
+            {/* Dynamic Colors Selection */}
+            {uniqueColors.length > 0 && (
+              <div className="px-6 mt-6">
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: "#111", letterSpacing: -0.2 }}>Color</div>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {uniqueColors.map((c) => {
+                    const active = c === selectedColor;
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => setSelectedColor(c)}
+                        className="px-4 py-2 rounded-full font-semibold transition-all cursor-pointer"
+                        style={{
+                          fontSize: 12.5,
+                          background: active ? "#0F62FE" : "#fff",
+                          color: active ? "#fff" : "#111",
+                          boxShadow: active ? "0 4px 12px rgba(15,98,254,0.25)" : "inset 0 0 0 1px rgba(17,17,17,0.08)"
+                        }}
+                      >
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Sizes Selection */}
+            {uniqueSizes.length > 0 && (
+              <div className="px-6 mt-5">
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: "#111", letterSpacing: -0.2 }}>Size</div>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {uniqueSizes.map((s) => {
+                    const active = s === selectedSize;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setSelectedSize(s)}
+                        className="px-4 py-2 rounded-full font-semibold transition-all cursor-pointer"
+                        style={{
+                          fontSize: 12.5,
+                          background: active ? "#0F62FE" : "#fff",
+                          color: active ? "#fff" : "#111",
+                          boxShadow: active ? "0 4px 12px rgba(15,98,254,0.25)" : "inset 0 0 0 1px rgba(17,17,17,0.08)"
+                        }}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Description (rendered with full HTML + spec styles) */}
+            {product.description && (
               <div className="px-6 mt-6">
                 <Card>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>Description</div>
-                  <p className="mt-2" style={{ fontSize: 13.5, color: "#555", lineHeight: 1.6, letterSpacing: -0.05 }}>
-                    {/* Strip HTML tags from description */}
-                    {product.description.replace(/<[^>]*>/g, "").slice(0, 400)}
-                    {product.description.replace(/<[^>]*>/g, "").length > 400 && "..."}
-                  </p>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#111", letterSpacing: -0.3, marginBottom: 8 }}>
+                    Description
+                  </div>
+                  <div
+                    className="product-description-container"
+                    style={{
+                      fontSize: 13,
+                      color: "#444",
+                      lineHeight: 1.55,
+                      maxHeight: 450,
+                      overflowY: "auto",
+                      scrollbarWidth: "none"
+                    }}
+                    dangerouslySetInnerHTML={{ __html: product.description }}
+                  />
                 </Card>
               </div>
             )}
@@ -401,7 +536,7 @@ function ProductDetail() {
                       <button
                         key={i}
                         onClick={() => setActiveImg(i)}
-                        className="overflow-hidden"
+                        className="overflow-hidden cursor-pointer"
                         style={{
                           aspectRatio: "1/1",
                           borderRadius: 12,
@@ -467,7 +602,7 @@ function ProductDetail() {
           >
             <button
               onClick={addToCart}
-              className="flex-1 inline-flex items-center justify-center gap-2 transition-all active:scale-95"
+              className="flex-1 inline-flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
               style={{
                 height: 52,
                 borderRadius: 22,
@@ -487,7 +622,7 @@ function ProductDetail() {
             </button>
             <button
               onClick={() => navigate({ to: "/checkout" })}
-              className="flex-1 inline-flex items-center justify-center transition-all active:scale-95"
+              className="flex-1 inline-flex items-center justify-center transition-all active:scale-95 cursor-pointer"
               style={{
                 height: 52,
                 borderRadius: 22,
@@ -502,6 +637,30 @@ function ProductDetail() {
             </button>
           </div>
         </div>
+
+        {/* Global Description Style Fix */}
+        <style>{`
+          .product-description-container img {
+            max-width: 100% !important;
+            height: auto !important;
+            border-radius: 12px;
+            margin: 8px 0;
+            display: block;
+          }
+          .product-description-container p {
+            margin-bottom: 6px;
+          }
+          .product-description-container table {
+            width: 100% !important;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 11px;
+          }
+          .product-description-container td {
+            border: 1px solid rgba(17,17,17,0.06);
+            padding: 4px;
+          }
+        `}</style>
 
         <HomeIndicator />
       </>

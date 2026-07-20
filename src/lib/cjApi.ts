@@ -61,6 +61,7 @@ export interface CJProductDetail extends CJProduct {
   videoUrl: string | null;
   description: string;
   category: string;
+  variants?: any[];
 }
 
 const BRANDS = [
@@ -264,7 +265,7 @@ export async function fetchProductDetail(
   try {
     const token = await getToken();
     const data = await proxiedFetch(
-      `https://developers.cjdropshipping.com/api2.0/v1/product/queryByPid?pid=${cached.cjId}`,
+      `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${cached.cjId}`,
       { headers: { "CJ-Access-Token": token } }
     );
     const d = data.data;
@@ -276,11 +277,19 @@ export async function fetchProductDetail(
         videoUrl: null,
         description: cached.name,
         category: "",
+        variants: [],
       };
     }
 
     const imageSet: string[] = [];
-    if (d.productImage) imageSet.push(d.productImage);
+    if (Array.isArray(d.productImage)) {
+      d.productImage.forEach((img: string) => {
+        if (img && !imageSet.includes(img)) imageSet.push(img);
+      });
+    } else if (typeof d.productImage === "string" && d.productImage) {
+      imageSet.push(d.productImage);
+    }
+
     if (Array.isArray(d.productImageSet)) {
       d.productImageSet.forEach((img: string) => {
         if (img && !imageSet.includes(img)) imageSet.push(img);
@@ -301,6 +310,7 @@ export async function fetchProductDetail(
       videoUrl: d.productVideo || null,
       description: d.description || d.productNameEn || cached.name,
       category: d.categoryName || "",
+      variants: d.variants || [],
     };
   } catch (err) {
     console.error("Live detail fetch failed, falling back to cached single view:", err);

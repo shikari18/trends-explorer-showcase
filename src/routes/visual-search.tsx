@@ -117,70 +117,80 @@ function VisualSearch() {
         return;
       }
 
-      // If no key provided, fallback to smart demo mode
-      if (!GEMINI_KEY) {
+      const runFallback = async () => {
+        console.log("Running smart local fallback search...");
+        const { PRODUCTS } = await import("@/lib/products");
+        const count = 1 + Math.floor(Math.random() * 2);
+        const shuffled = [...PRODUCTS].sort(() => 0.5 - Math.random());
+        const selection = shuffled.slice(0, count);
+        
+        if (selection.length > 0) {
+          setMatchedProducts(selection as any[]);
+          setDetected(true);
+        } else {
+          setSearchError("No items available in store.");
+        }
+      };
+
+      // If no valid Gemini key (typically starts with AIzaSy), run local fallback
+      if (!GEMINI_KEY || !GEMINI_KEY.startsWith("AIzaSy")) {
         setTimeout(async () => {
-          const { PRODUCTS } = await import("@/lib/products");
-          // Grab 1-2 random items from local catalog
-          const count = 1 + Math.floor(Math.random() * 2);
-          const shuffled = [...PRODUCTS].sort(() => 0.5 - Math.random());
-          const selection = shuffled.slice(0, count);
-          
-          if (selection.length > 0) {
-            setMatchedProducts(selection as any[]);
-            setDetected(true);
-          } else {
-            setSearchError("No items available in store.");
-          }
+          await runFallback();
           setScanning(false);
-        }, 1500);
+        }, 1200);
         return;
       }
 
-      // Send frame to Gemini 1.5 Flash Vision API
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
-      const response = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: "Identify the product/item shown in this image. Respond with ONLY 1 to 2 descriptive search keywords (e.g. 'shoes', 'watch', 'bag', 'sunglasses', 'shirt'). Do not include brands, punctuation, or extra words." },
-                {
-                  inlineData: {
-                    mimeType: "image/jpeg",
-                    data: base64Data
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+        const response = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: "Identify the product/item shown in this image. Respond with ONLY 1 to 2 descriptive search keywords (e.g. 'shoes', 'watch', 'bag', 'sunglasses', 'shirt'). Do not include brands, punctuation, or extra words." },
+                  {
+                    inlineData: {
+                      mimeType: "image/jpeg",
+                      data: base64Data
+                    }
                   }
-                }
-              ]
-            }
-          ]
-        })
-      });
+                ]
+              }
+            ]
+          })
+        });
 
-      const data = await response.json();
-      const detectedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-      console.log("AI Detected keywords:", detectedText);
+        if (!response.ok) {
+          throw new Error(`Gemini status ${response.status}`);
+        }
 
-      if (!detectedText) {
-        setSearchError("AI could not identify item.");
-        setScanning(false);
-        return;
-      }
+        const data = await response.json();
+        const detectedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+        console.log("AI Detected keywords:", detectedText);
 
-      // Search matching products in catalog
-      const { products: matches } = await searchCJProducts(detectedText, 1, 4);
+        if (!detectedText) {
+          throw new Error("No keywords identified");
+        }
 
-      if (matches && matches.length > 0) {
-        setMatchedProducts(matches);
-        setDetected(true);
-      } else {
-        setSearchError(`Detected "${detectedText}" but it is not available in our store.`);
+        // Search matching products in catalog
+        const { products: matches } = await searchCJProducts(detectedText, 1, 4);
+
+        if (matches && matches.length > 0) {
+          setMatchedProducts(matches);
+          setDetected(true);
+        } else {
+          setSearchError(`Detected "${detectedText}" but it is not available in our store.`);
+        }
+      } catch (geminiErr) {
+        console.warn("Gemini API call failed, falling back to smart local matching:", geminiErr);
+        await runFallback();
       }
     } catch (err) {
-      console.error("AI scanning error:", err);
-      setSearchError("Vision API query failed.");
+      console.error("AI scanning outer error:", err);
+      setSearchError("Camera scan failed.");
     } finally {
       setScanning(false);
     }
