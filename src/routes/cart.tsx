@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Trash2, Gift, Minus, Plus, X, Check, ShieldCheck, Truck, BadgeCheck } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
@@ -21,7 +21,28 @@ const INITIAL = [
 ];
 
 function Cart() {
-  const [items, setItems] = useState(INITIAL);
+  const [items, setItems] = useState<any[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("cart");
+      if (saved) {
+        setItems(JSON.parse(saved));
+      } else {
+        setItems(INITIAL);
+        localStorage.setItem("cart", JSON.stringify(INITIAL));
+      }
+      setMounted(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem("cart", JSON.stringify(items));
+    }
+  }, [items, mounted]);
+
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
   const tax = Math.round(subtotal * 0.075);
   const total = subtotal + tax;
@@ -37,7 +58,7 @@ function Cart() {
                 <ArrowLeft size={18} color="#111" />
               </Link>
               <div style={{ fontSize: 15.5, fontWeight: 600, color: "#111", letterSpacing: -0.3 }}>Shopping Cart</div>
-              <button aria-label="Clear" style={circle()} className="flex items-center justify-center">
+              <button onClick={() => setItems([])} aria-label="Clear" style={circle()} className="flex items-center justify-center">
                 <Trash2 size={17} color="#111" />
               </button>
             </div>

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AiAssistantRouteImport } from './routes/ai-assistant'
 import { Route as AiOutfitRouteImport } from './routes/ai-outfit'
 import { Route as ArRouteImport } from './routes/ar'
@@ -35,12 +36,18 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as VisualSearchRouteImport } from './routes/visual-search'
 import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as BrandSlugRouteImport } from './routes/brand.$slug'
 import { Route as CategorySlugRouteImport } from './routes/category.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiAssistantRoute = AiAssistantRouteImport.update({
@@ -168,6 +175,11 @@ const WishlistRoute = WishlistRouteImport.update({
   path: '/wishlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AdminRoute,
+} as any)
 const BrandSlugRoute = BrandSlugRouteImport.update({
   id: '/brand/$slug',
   path: '/brand/$slug',
@@ -181,6 +193,7 @@ const CategorySlugRoute = CategorySlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/ai-assistant': typeof AiAssistantRoute
   '/ai-outfit': typeof AiOutfitRoute
   '/ar': typeof ArRoute
@@ -206,11 +219,13 @@ export interface FileRoutesByFullPath {
   '/support': typeof SupportRoute
   '/visual-search': typeof VisualSearchRoute
   '/wishlist': typeof WishlistRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/ai-assistant': typeof AiAssistantRoute
   '/ai-outfit': typeof AiOutfitRoute
   '/ar': typeof ArRoute
@@ -236,12 +251,14 @@ export interface FileRoutesByTo {
   '/support': typeof SupportRoute
   '/visual-search': typeof VisualSearchRoute
   '/wishlist': typeof WishlistRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/ai-assistant': typeof AiAssistantRoute
   '/ai-outfit': typeof AiOutfitRoute
   '/ar': typeof ArRoute
@@ -267,6 +284,7 @@ export interface FileRoutesById {
   '/support': typeof SupportRoute
   '/visual-search': typeof VisualSearchRoute
   '/wishlist': typeof WishlistRoute
+  '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
 }
@@ -274,6 +292,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/ai-assistant'
     | '/ai-outfit'
     | '/ar'
@@ -299,11 +318,13 @@ export interface FileRouteTypes {
     | '/support'
     | '/visual-search'
     | '/wishlist'
+    | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/ai-assistant'
     | '/ai-outfit'
     | '/ar'
@@ -329,11 +350,13 @@ export interface FileRouteTypes {
     | '/support'
     | '/visual-search'
     | '/wishlist'
+    | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/ai-assistant'
     | '/ai-outfit'
     | '/ar'
@@ -359,12 +382,14 @@ export interface FileRouteTypes {
     | '/support'
     | '/visual-search'
     | '/wishlist'
+    | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AiAssistantRoute: typeof AiAssistantRoute
   AiOutfitRoute: typeof AiOutfitRoute
   ArRoute: typeof ArRoute
@@ -401,6 +426,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai-assistant': {
@@ -578,6 +610,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WishlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/dashboard': {
+      id: '/admin/dashboard'
+      path: '/dashboard'
+      fullPath: '/admin/dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/brand/$slug': {
       id: '/brand/$slug'
       path: '/brand/$slug'
@@ -595,8 +634,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminDashboardRoute: typeof AdminDashboardRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminDashboardRoute: AdminDashboardRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   AiAssistantRoute: AiAssistantRoute,
   AiOutfitRoute: AiOutfitRoute,
   ArRoute: ArRoute,

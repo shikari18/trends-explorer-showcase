@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Search, Mic, Camera, Heart, ArrowUpRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Mic, Camera, Heart, ArrowUpRight, ShoppingCart } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import heroSummer from "@/assets/home-hero-summer.jpg";
@@ -11,6 +11,7 @@ import prodWatch from "@/assets/home-watch.jpg";
 import rec1 from "@/assets/home-rec-1.jpg";
 import rec2 from "@/assets/home-rec-2.jpg";
 import curated from "@/assets/home-curated.jpg";
+import { PRODUCTS } from "@/lib/products";
 
 export const Route = createFileRoute("/home")({
   component: Home,
@@ -35,6 +36,65 @@ const BRANDS = ["Apple", "Nike", "Adidas", "Sony", "Samsung", "Dyson"];
 
 function Home() {
   const [activeCat, setActiveCat] = useState("Fashion");
+  const [wishlist, setWishlist] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Always start fresh — clear any old defaults that may have had pre-filled reds
+      const saved = localStorage.getItem("wishlist");
+      const parsed: string[] = saved ? JSON.parse(saved) : [];
+      // Only keep IDs that are actual product IDs (not old default strings)
+      const validIds = ["p1","p2","p3","p4","p5","p6","p7","p8","p9","p10","p11","p12","p13","p14","p15","p16","p17","p18","p19","p20"];
+      const clean = parsed.filter((id) => validIds.includes(id));
+      setWishlist(clean);
+      localStorage.setItem("wishlist", JSON.stringify(clean));
+    }
+  }, []);
+
+  const toggleWishlist = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setWishlist((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      localStorage.setItem("wishlist", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const addToCart = (p: typeof PRODUCTS[number], e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("cart");
+      let items = saved ? JSON.parse(saved) : [
+        { id: "t", brand: "Saint Laurent", name: "Luxury Leather Tote", color: "Cream", size: "M", price: 2450, img: "/src/assets/prod-tote.jpg", qty: 1 },
+        { id: "w", brand: "Apple", name: "Watch Ultra 3", color: "Titanium", size: "49mm", price: 899, img: "/src/assets/home-watch.jpg", qty: 1 },
+        { id: "h", brand: "Sony", name: "WH-1000XM6", color: "Black", size: "One", price: 449, img: "/src/assets/home-headphones.jpg", qty: 1 },
+      ];
+      
+      const priceNum = parseFloat(p.price.replace(/[^0-9.]/g, ""));
+      const existing = items.find((it: any) => it.id === p.id);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        items.push({
+          id: p.id,
+          brand: p.brand,
+          name: p.name,
+          color: "Default",
+          size: "One Size",
+          price: priceNum || 99,
+          img: p.img,
+          qty: 1
+        });
+      }
+      
+      localStorage.setItem("cart", JSON.stringify(items));
+      import("sonner").then(({ toast }) => {
+        toast.success(`${p.name} added to cart!`);
+      });
+    }
+  };
 
   return (
     <PhoneFrame>
@@ -334,6 +394,88 @@ function Home() {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Trending Styles - 20 items */}
+              <SectionHeader title="Trending Styles" action="Filters" />
+              <div className="grid grid-cols-2 gap-3 px-6 mt-4">
+                {PRODUCTS.map((p) => {
+                  const isLiked = wishlist.includes(p.id);
+                  return (
+                    <Link
+                      to="/product"
+                      key={p.id}
+                      className="overflow-hidden block group relative active:scale-[0.98] transition-all"
+                      style={{
+                        borderRadius: 22,
+                        background: "#FFFFFF",
+                        boxShadow:
+                          "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)",
+                      }}
+                    >
+                      <div className="relative overflow-hidden" style={{ background: "#F7F7F5" }}>
+                        <img
+                          src={p.img}
+                          alt={p.name}
+                          loading="lazy"
+                          className="w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          style={{ aspectRatio: "1 / 1" }}
+                        />
+                        <button
+                          onClick={(e) => toggleWishlist(p.id, e)}
+                          aria-label={isLiked ? "Remove from wishlist" : "Add to wishlist"}
+                          className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 999,
+                            background: "rgba(255,255,255,0.9)",
+                            backdropFilter: "blur(16px)",
+                            boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
+                          }}
+                        >
+                          <Heart
+                            size={14}
+                            strokeWidth={2.4}
+                            fill={isLiked ? "#FF3B30" : "none"}
+                            color={isLiked ? "#FF3B30" : "#111111"}
+                          />
+                        </button>
+                      </div>
+                      <div className="px-3.5 py-3">
+                        <div style={{ fontSize: 10, color: "#8A8A8A", letterSpacing: 0.2, fontWeight: 700, textTransform: "uppercase" }}>
+                          {p.brand}
+                        </div>
+                        <div
+                          className="mt-0.5 truncate"
+                          style={{ fontSize: 13.5, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}
+                        >
+                          {p.name}
+                        </div>
+                        <div className="mt-1 flex items-center justify-between">
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: "#111", letterSpacing: -0.2 }}>
+                            {p.price}
+                          </span>
+                          <button
+                            onClick={(e) => addToCart(p, e)}
+                            aria-label="Add to cart"
+                            className="flex items-center justify-center transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                            style={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: 999,
+                              background: "rgba(255,255,255,0.9)",
+                              backdropFilter: "blur(16px)",
+                              boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)"
+                            }}
+                          >
+                            <ShoppingCart size={11} color="#111" strokeWidth={2.2} />
+                          </button>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
 
               {/* Popular Brands */}
