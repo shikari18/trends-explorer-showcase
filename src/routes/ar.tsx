@@ -88,7 +88,7 @@ function AR() {
                     <Star size={10} fill="#111" color="#111" />
                     <span style={{ fontSize: 11, fontWeight: 600, color: "#111" }}>4.9</span>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>?2,450</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>₵2,450</span>
                 </div>
               </div>
               <Link

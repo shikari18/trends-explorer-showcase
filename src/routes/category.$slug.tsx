@@ -31,12 +31,12 @@ function capitalize(s: string) {
 const FILTERS = ["All", "Men", "Women", "Accessories", "Bags", "Shoes", "Watches", "New", "Sale"];
 
 const PRODUCTS = [
-  { brand: "Saint Laurent", name: "Leather Tote", price: "?2,890", rating: 5, img: tote },
-  { brand: "Gucci", name: "Horsebit Loafers", price: "?980", rating: 5, img: loafer },
-  { brand: "Prada", name: "Symbole Sunglasses", price: "?540", rating: 4, img: sunglasses },
-  { brand: "Balenciaga", name: "Triple S Sneakers", price: "?1,190", rating: 5, img: sneaker },
-  { brand: "Tom Ford", name: "Wool Jacket", price: "?3,450", rating: 5, img: jacket },
-  { brand: "Louis Vuitton", name: "Monogram Wallet", price: "?540", rating: 4, img: wallet },
+  { brand: "Saint Laurent", name: "Leather Tote", price: "₵2,890", rating: 5, img: tote },
+  { brand: "Gucci", name: "Horsebit Loafers", price: "₵980", rating: 5, img: loafer },
+  { brand: "Prada", name: "Symbole Sunglasses", price: "₵540", rating: 4, img: sunglasses },
+  { brand: "Balenciaga", name: "Triple S Sneakers", price: "₵1,190", rating: 5, img: sneaker },
+  { brand: "Tom Ford", name: "Wool Jacket", price: "₵3,450", rating: 5, img: jacket },
+  { brand: "Louis Vuitton", name: "Monogram Wallet", price: "₵540", rating: 4, img: wallet },
 ];
 
 function CategoryDetail() {

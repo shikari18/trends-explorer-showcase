@@ -92,7 +92,7 @@ function Cart() {
                     <div className="mt-0.5 truncate" style={{ fontSize: 14, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>{it.name}</div>
                     <div className="mt-0.5" style={{ fontSize: 11.5, color: "#666" }}>{it.color} · {it.size}</div>
                     <div className="mt-1.5 flex items-center justify-between">
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111", letterSpacing: -0.2 }}>${it.price.toLocaleString()}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111", letterSpacing: -0.2 }}>₵{it.price.toLocaleString()}</div>
                       <div
                         className="flex items-center"
                         style={{ height: 28, borderRadius: 999, background: "#F7F7F5", padding: "0 2px" }}
@@ -139,14 +139,14 @@ function Cart() {
               <div className="p-4" style={{ borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>Order Summary</div>
                 <div className="mt-3 space-y-2" style={{ fontSize: 13.5 }}>
-                  <Row label="Subtotal" value={`$${subtotal.toLocaleString()}`} />
+                  <Row label="Subtotal" value={`₵${subtotal.toLocaleString()}`} />
                   <Row label="Shipping" value={<span style={{ color: "#34C759", fontWeight: 700 }}>Free</span>} />
-                  <Row label="Tax" value={`$${tax.toLocaleString()}`} />
+                  <Row label="Tax" value={`₵${tax.toLocaleString()}`} />
                 </div>
                 <div className="my-3" style={{ height: 1, background: "rgba(17,17,17,0.06)" }} />
                 <div className="flex items-center justify-between">
                   <span style={{ fontSize: 14, color: "#666" }}>Total</span>
-                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>${total.toLocaleString()}</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>₵{total.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -165,9 +165,9 @@ function Cart() {
               </div>
               <div className="mt-3 flex gap-3 overflow-x-auto px-5" style={{ scrollbarWidth: "none" }}>
                 {[
-                  { name: "Leather Wallet", price: "?540", img: wallet },
-                  { name: "AirPods Pro", price: "?249", img: headphones },
-                  { name: "Sunglasses", price: "?380", img: sunglasses },
+                  { name: "Leather Wallet", price: "₵540", img: wallet },
+                  { name: "AirPods Pro", price: "₵249", img: headphones },
+                  { name: "Sunglasses", price: "₵380", img: sunglasses },
                 ].map((p) => (
                   <div key={p.name} className="shrink-0" style={{ width: 148, borderRadius: 20, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)", overflow: "hidden" }}>
                     <img src={p.img} alt={p.name} className="w-full object-cover" style={{ aspectRatio: "1/1" }} />

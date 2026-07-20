@@ -283,7 +283,7 @@ function VisualSearch() {
                 <div className="mt-3 flex items-end justify-between">
                   <div>
                     <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.2, fontWeight: 600, textTransform: "uppercase" }}>Saint Laurent</div>
-                    <div className="mt-1" style={{ fontSize: 16, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>$2,450</div>
+                    <div className="mt-1" style={{ fontSize: 16, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>₵2,450</div>
                   </div>
                   <Link
                     to="/product"

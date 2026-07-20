@@ -52,7 +52,7 @@ function Profile() {
               <MenuItem to="/ai-assistant" icon={<Sparkles size={16} color="#0F62FE" />} label="Trends AI" hint="Assistant" />
               <MenuItem to="/ai-outfit" icon={<Shirt size={16} color="#0F62FE" />} label="AI Outfit Builder" hint="New" />
               <MenuItem to="/drops" icon={<Zap size={16} color="#0F62FE" />} label="Exclusive Drops" />
-              <MenuItem to="/referral" icon={<Gift size={16} color="#0F62FE" />} label="Refer & Earn" hint="?20" />
+              <MenuItem to="/referral" icon={<Gift size={16} color="#0F62FE" />} label="Refer & Earn" hint="₵20" />
               <MenuItem to="/brand/saint-laurent" icon={<Sparkles size={16} color="#111" />} label="Brand Stores" last />
             </MenuGroup>
 

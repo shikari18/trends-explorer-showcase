@@ -26,10 +26,10 @@ export const Route = createFileRoute("/home")({
 const CATEGORIES = ["Fashion", "Shoes", "Electronics", "Beauty", "Home", "Sports", "Gaming", "Luxury"];
 
 const NEW_ARRIVALS = [
-  { name: "Leather Weekender", brand: "Bennett & Co.", price: "?680", img: prodBag },
-  { name: "WH-1000XM6", brand: "Sony", price: "?449", img: prodHeadphones },
-  { name: "Air Max Runner", brand: "Nike", price: "?180", img: prodSneaker },
-  { name: "Watch Ultra 2", brand: "Apple", price: "?799", img: prodWatch },
+  { name: "Leather Weekender", brand: "Bennett & Co.", price: "₵680", img: prodBag },
+  { name: "WH-1000XM6", brand: "Sony", price: "₵449", img: prodHeadphones },
+  { name: "Air Max Runner", brand: "Nike", price: "₵180", img: prodSneaker },
+  { name: "Watch Ultra 2", brand: "Apple", price: "₵799", img: prodWatch },
 ];
 
 const BRANDS = ["Apple", "Nike", "Adidas", "Sony", "Samsung", "Dyson"];
@@ -364,8 +364,8 @@ function Home() {
               <SectionHeader title="Recommended For You" action="See all" />
               <div className="grid grid-cols-2 gap-3 px-6 mt-4">
                 {[
-                  { img: rec1, name: "Cashmere Knit", price: "?320" },
-                  { img: rec2, name: "Ceramic Vase", price: "?95" },
+                  { img: rec1, name: "Cashmere Knit", price: "₵320" },
+                  { img: rec2, name: "Ceramic Vase", price: "₵95" },
                 ].map((p) => (
                   <div
                     key={p.name}

@@ -49,7 +49,7 @@ function Referral() {
             <div className="mx-5 mt-3 p-4 grid grid-cols-2 gap-3"
               style={{ borderRadius: 22, background: "linear-gradient(180deg, rgba(15,98,254,0.05), #fff)",
                 boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.05)" }}>
-              <div><div style={{ fontSize: 11, color: "#666" }}>You get</div><div className="mt-1" style={{ fontSize: 20, fontWeight: 700, color: "#0F62FE", letterSpacing: -0.4 }}>?20 credit</div></div>
+              <div><div style={{ fontSize: 11, color: "#666" }}>You get</div><div className="mt-1" style={{ fontSize: 20, fontWeight: 700, color: "#0F62FE", letterSpacing: -0.4 }}>₵20 credit</div></div>
               <div><div style={{ fontSize: 11, color: "#666" }}>They get</div><div className="mt-1" style={{ fontSize: 20, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>15% off</div></div>
             </div>
 
@@ -79,7 +79,7 @@ function Referral() {
                 boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
               <div className="flex items-center gap-2"><Users size={14} color="#111" /><span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>Your progress</span></div>
               <div className="mt-3 grid grid-cols-3">
-                {[["Invited","12"],["Successful","8"],["Earned","?160"]].map(([k,v],i)=>(
+                {[["Invited","12"],["Successful","8"],["Earned","₵160"]].map(([k,v],i)=>(
                   <div key={k} className="text-center" style={{ borderLeft: i? "1px solid rgba(17,17,17,0.06)" : "none" }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>{v}</div>
                     <div style={{ fontSize: 11, color: "#666" }}>{k}</div>
