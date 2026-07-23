@@ -5,7 +5,7 @@ import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFr
 import { BottomNav } from "@/components/phone/BottomNav";
 import heroSummer from "@/assets/home-hero-summer.jpg";
 import curated from "@/assets/home-curated.jpg";
-import { fetchCategoryPage, CATEGORIES, CJProduct } from "@/lib/cjApi";
+import { fetchCategoryPage, CATEGORIES, CATEGORY_MAP, CJProduct } from "@/lib/cjApi";
 
 export const Route = createFileRoute("/home")({
   component: Home,
@@ -57,7 +57,40 @@ function Home() {
     if (loading) return;
     setLoading(true);
     try {
-      const { products: newItems, hasMore: more } = await fetchCategoryPage(cat, pageNum, 50);
+      let newItems: CJProduct[];
+      let more: boolean;
+
+      if (cat === "Random") {
+        // For Random: fetch from 7 different category buckets in parallel, interleave them
+        const allCatKeys = Object.keys(CATEGORY_MAP);
+        const catsPerPage = 7;
+        const startIdx = ((pageNum - 1) * catsPerPage) % allCatKeys.length;
+        const selectedCats = Array.from({ length: catsPerPage }, (_, i) =>
+          allCatKeys[(startIdx + i) % allCatKeys.length]
+        );
+        const perCat = 8; // 8 products from each category = up to 56 items per page
+        const results = await Promise.allSettled(
+          selectedCats.map((c) => fetchCategoryPage(c, Math.ceil(pageNum / 2) || 1, perCat))
+        );
+        // Interleave round-robin so feed never runs out of variety
+        const arrays = results
+          .filter((r): r is PromiseFulfilledResult<{ products: CJProduct[]; hasMore: boolean }> => r.status === "fulfilled")
+          .map((r) => r.value.products);
+        const maxLen = Math.max(...arrays.map((a) => a.length), 0);
+        const interleaved: CJProduct[] = [];
+        for (let i = 0; i < maxLen; i++) {
+          for (const arr of arrays) {
+            if (i < arr.length) interleaved.push(arr[i]);
+          }
+        }
+        newItems = interleaved;
+        more = arrays.some((a) => a.length >= perCat);
+      } else {
+        const res = await fetchCategoryPage(cat, pageNum, 50);
+        newItems = res.products;
+        more = res.hasMore;
+      }
+
       setProducts((prev) => (pageNum === 1 ? newItems : [...prev, ...newItems]));
       setHasMore(more);
       setPage(pageNum + 1);
@@ -197,10 +230,10 @@ function Home() {
                     <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.85)", letterSpacing: 0.4, textTransform: "uppercase", fontWeight: 600 }}>Summer 26</div>
                     <div className="mt-1" style={{ fontSize: 26, lineHeight: 1.05, fontWeight: 700, letterSpacing: -0.7, color: "#fff" }}>Summer<br />Essentials</div>
                   </div>
-                  <button className="inline-flex items-center gap-1.5 px-4"
+                  <Link to="/collections" className="inline-flex items-center gap-1.5 px-4"
                     style={{ height: 38, borderRadius: 999, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", fontSize: 13.5, fontWeight: 600, color: "#111", letterSpacing: -0.2, boxShadow: "0 6px 16px -6px rgba(17,17,17,0.3)" }}>
                     Explore <ArrowUpRight size={14} strokeWidth={2.4} />
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>

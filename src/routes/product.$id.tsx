@@ -28,7 +28,10 @@ function ProductDetail() {
   const [addedToCart, setAddedToCart] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [arMode, setArMode] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
 
   // Variant selector states
   const [selectedColor, setSelectedColor] = useState("");
@@ -173,6 +176,45 @@ function ProductDetail() {
     }
   };
 
+  // Touch swipe handlers for image gallery
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // Only handle horizontal swipes (dx > dy to avoid conflicting with scroll)
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < 0 && activeImg < allMedia.length - 1) {
+      setActiveImg((i) => i + 1);
+      setVideoPlaying(false);
+    } else if (dx > 0 && activeImg > 0) {
+      setActiveImg((i) => i - 1);
+      setVideoPlaying(false);
+    }
+  };
+
+  // AR View — use model-viewer if available, else full-screen image overlay
+  const launchAR = () => {
+    const imgUrl = product?.images?.[activeImg < product.images.length ? activeImg : 0] || product?.img || "";
+    if (!imgUrl) return;
+
+    // Check if WebXR AR is supported
+    if ((navigator as any).xr) {
+      (navigator as any).xr.isSessionSupported?.("immersive-ar").then((supported: boolean) => {
+        if (supported) {
+          setArMode(true);
+        } else {
+          setArMode(true); // fall back to overlay mode
+        }
+      }).catch(() => setArMode(true));
+    } else {
+      setArMode(true);
+    }
+  };
+
   const currentIsVideo = allMedia[activeImg] === "__video__";
 
   if (loading) {
@@ -244,7 +286,7 @@ function ProductDetail() {
               </button>
             </div>
 
-            {/* Main media viewer */}
+            {/* Main media viewer — swipeable */}
             <div className="mt-4 px-5">
               <div
                 className="relative overflow-hidden"
@@ -254,6 +296,8 @@ function ProductDetail() {
                   background: "#F7F7F5",
                   boxShadow: "0 24px 60px -30px rgba(17,17,17,0.25), inset 0 0 0 1px rgba(17,17,17,0.03)",
                 }}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
               >
                 {/* Image or Video */}
                 {currentIsVideo && product.videoUrl ? (
@@ -291,9 +335,11 @@ function ProductDetail() {
                   </div>
                 ) : (
                   <img
+                    key={activeImgUrl}
                     src={activeImgUrl}
                     alt={product.name}
                     className="w-full h-full object-cover"
+                    style={{ animation: "fadeIn 0.2s ease" }}
                   />
                 )}
 
@@ -312,22 +358,23 @@ function ProductDetail() {
                 </button>
 
                 {/* AR button */}
-                <div
-                  className="absolute bottom-4 left-4 inline-flex items-center gap-1.5 px-3.5"
+                <button
+                  onClick={launchAR}
+                  className="absolute bottom-4 left-4 inline-flex items-center gap-1.5 px-3.5 active:scale-95 transition-all"
                   style={{
                     height: 34,
                     borderRadius: 999,
-                    background: "rgba(255,255,255,0.9)",
+                    background: "rgba(255,255,255,0.92)",
                     backdropFilter: "blur(16px)",
                     fontSize: 12,
                     fontWeight: 600,
                     color: "#111",
-                    boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
+                    boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06), 0 4px 12px -6px rgba(17,17,17,0.15)",
                   }}
                 >
                   <Box size={12} strokeWidth={2.2} />
                   View in AR
-                </div>
+                </button>
 
                 {/* Navigation arrows (if multiple images) */}
                 {allMedia.length > 1 && (
@@ -646,6 +693,8 @@ function ProductDetail() {
 
         {/* Global Description Style Fix */}
         <style>{`
+          @keyframes fadeIn { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: scale(1); } }
+          @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
           .product-description-container img {
             max-width: 100% !important;
             height: auto !important;
@@ -667,6 +716,16 @@ function ProductDetail() {
             padding: 4px;
           }
         `}</style>
+
+        {/* AR Overlay */}
+        {arMode && (
+          <AROverlay
+            imageUrl={product.images?.[activeImg < product.images.length ? activeImg : 0] || product.img}
+            productName={product.name}
+            price={priceDisplay}
+            onClose={() => setArMode(false)}
+          />
+        )}
 
         <HomeIndicator />
       </>
@@ -697,3 +756,132 @@ const circleBtnStyle: React.CSSProperties = {
   backdropFilter: "blur(16px)",
   boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06), 0 6px 14px -8px rgba(17,17,17,0.15)",
 };
+
+// AR Overlay component — uses device camera as background + product image overlay
+function AROverlay({
+  imageUrl, productName, price, onClose,
+}: {
+  imageUrl: string; productName: string; price: string; onClose: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
+
+  useEffect(() => {
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      .then((stream) => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+          setCameraReady(true);
+        }
+      })
+      .catch(() => setCameraError(true));
+
+    return () => {
+      if (videoRef.current?.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      className="absolute inset-0 z-50 flex flex-col"
+      style={{ background: "#000" }}
+    >
+      {/* Camera feed */}
+      <video
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full object-cover"
+        playsInline
+        muted
+        autoPlay
+      />
+
+      {/* AR scan lines overlay */}
+      {cameraReady && (
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(15,98,254,0.03) 3px, rgba(15,98,254,0.03) 4px)" }} />
+      )}
+
+      {/* Product image overlaid in center */}
+      {cameraReady && (
+        <div
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ pointerEvents: "none" }}
+        >
+          <div style={{ position: "relative", width: "60%", aspectRatio: "1/1" }}>
+            {/* Corner guides */}
+            {[[0,0],[0,1],[1,0],[1,1]].map(([top, right], idx) => (
+              <div
+                key={idx}
+                style={{
+                  position: "absolute",
+                  top: top === 0 ? 0 : "auto",
+                  bottom: top === 1 ? 0 : "auto",
+                  left: right === 0 ? 0 : "auto",
+                  right: right === 1 ? 0 : "auto",
+                  width: 24, height: 24,
+                  borderTop: top === 0 ? "3px solid #0F62FE" : "none",
+                  borderBottom: top === 1 ? "3px solid #0F62FE" : "none",
+                  borderLeft: right === 0 ? "3px solid #0F62FE" : "none",
+                  borderRight: right === 1 ? "3px solid #0F62FE" : "none",
+                  borderRadius: top === 0 && right === 0 ? "4px 0 0 0" : top === 0 ? "0 4px 0 0" : right === 0 ? "0 0 0 4px" : "0 0 4px 0",
+                }}
+              />
+            ))}
+            <img
+              src={imageUrl}
+              alt={productName}
+              style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.85, filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.5))" }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Camera error fallback */}
+      {cameraError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black">
+          <img src={imageUrl} alt={productName} style={{ width: "70%", borderRadius: 20, objectFit: "contain", maxHeight: "50%" }} />
+          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, textAlign: "center", padding: "0 32px" }}>
+            Camera not available. Here's a detailed view.
+          </p>
+        </div>
+      )}
+
+      {/* Top bar */}
+      <div className="relative z-10 flex items-center justify-between px-5 pt-12 pb-4">
+        <div
+          className="inline-flex items-center gap-2 px-3"
+          style={{ height: 32, borderRadius: 999, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.15)" }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: "#0F62FE", boxShadow: "0 0 8px #0F62FE" }} />
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: "#fff", letterSpacing: 0.3 }}>AR VIEW</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="flex items-center justify-center"
+          style={{ width: 38, height: 38, borderRadius: 999, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.15)" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Bottom info */}
+      <div className="relative z-10 mt-auto px-5 pb-10">
+        <div
+          className="p-4"
+          style={{ borderRadius: 20, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,0.12)" }}
+        >
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", letterSpacing: -0.1 }}>Viewing in AR</div>
+          <div className="mt-1 truncate" style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: -0.4 }}>{productName}</div>
+          <div className="mt-1" style={{ fontSize: 18, fontWeight: 700, color: "#0F62FE" }}>{price}</div>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 8 }}>Point your camera at a surface to place the item.</p>
+        </div>
+      </div>
+    </div>
+  );
+}

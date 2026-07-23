@@ -147,42 +147,76 @@ function VisualSearch() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: "Identify the product/item shown in this image. Respond with ONLY 1 to 2 descriptive search keywords (e.g. 'shoes', 'watch', 'bag', 'sunglasses', 'shirt'). Do not include brands, punctuation, or extra words." },
-                  {
-                    inlineData: {
-                      mimeType: "image/jpeg",
-                      data: base64Data
-                    }
-                  }
-                ]
-              }
-            ]
+            contents: [{
+              parts: [
+                {
+                  text: `You are a product search assistant for an online store.
+Analyze this image and identify the product shown.
+Return ONLY a JSON object — no explanation, no markdown:
+{
+  "primary": "2-3 generic words best for searching a product catalog (use category terms not brand names, e.g. 'wireless earbuds' NOT 'AirPods', 'mechanical keyboard' NOT 'Logitech keyboard', 'running shoes' NOT 'Nike Air Max')",
+  "alternate": "a broader fallback search term if primary returns no results (e.g. 'bluetooth headphones', 'computer keyboard', 'sneakers')"
+}`
+                },
+                { inlineData: { mimeType: "image/jpeg", data: base64Data } }
+              ]
+            }]
           })
         });
 
-        if (!response.ok) {
-          throw new Error(`Gemini status ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Gemini status ${response.status}`);
 
         const data = await response.json();
-        const detectedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-        console.log("AI Detected keywords:", detectedText);
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+        console.log("AI raw response:", rawText);
 
-        if (!detectedText) {
-          throw new Error("No keywords identified");
+        if (!rawText) throw new Error("No AI response");
+
+        // Parse the JSON response from Gemini
+        let primaryTerm = "";
+        let alternateTerm = "";
+        try {
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            primaryTerm = parsed.primary || "";
+            alternateTerm = parsed.alternate || "";
+          }
+        } catch {
+          // If JSON parse fails, use the raw text as primary
+          primaryTerm = rawText.replace(/["{}]/g, "").split("\n")[0].trim();
         }
 
-        // Search matching products in catalog
-        const { products: matches } = await searchCJProducts(detectedText, 1, 4);
+        if (!primaryTerm) throw new Error("No search term identified");
+        console.log("AI search terms — primary:", primaryTerm, "alternate:", alternateTerm);
+
+        // Try primary search term first
+        let { products: matches } = await searchCJProducts(primaryTerm, 1, 8);
+
+        // If primary returns < 3 results, try alternate
+        if (matches.length < 3 && alternateTerm) {
+          console.log("Primary returned few results, trying alternate:", alternateTerm);
+          const { products: altMatches } = await searchCJProducts(alternateTerm, 1, 8);
+          if (altMatches.length > matches.length) matches = altMatches;
+        }
 
         if (matches && matches.length > 0) {
           setMatchedProducts(matches);
           setDetected(true);
         } else {
-          setSearchError(`Detected "${detectedText}" but it is not available in our store.`);
+          // Last resort: try each word from primaryTerm individually
+          const words = primaryTerm.split(" ").filter(w => w.length > 3);
+          let found: typeof matches = [];
+          for (const word of words) {
+            const { products } = await searchCJProducts(word, 1, 8);
+            if (products.length > found.length) found = products;
+          }
+          if (found.length > 0) {
+            setMatchedProducts(found);
+            setDetected(true);
+          } else {
+            setSearchError(`Could not find "${primaryTerm}" in our store. Try the search page.`);
+          }
         }
       } catch (geminiErr) {
         console.warn("Gemini API call failed, falling back to smart local matching:", geminiErr);
