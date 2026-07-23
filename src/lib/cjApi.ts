@@ -418,15 +418,53 @@ export async function fetchProductDetail(
     }
 
     const imageSet: string[] = [];
+
+    // Helper to add unique non-empty image URLs
+    const addImg = (url: string) => {
+      const clean = url?.trim();
+      if (clean && !imageSet.includes(clean)) imageSet.push(clean);
+    };
+
+    // CJ returns images in multiple formats depending on product type:
+    // 1. productImageSet — comma-separated string of all images (most common)
+    if (typeof d.productImageSet === "string" && d.productImageSet) {
+      d.productImageSet.split(",").forEach(addImg);
+    } else if (Array.isArray(d.productImageSet)) {
+      d.productImageSet.forEach((img: string) => addImg(img));
+    }
+
+    // 2. productImage — main image (string or first of array)
     if (Array.isArray(d.productImage)) {
-      d.productImage.forEach((img: string) => { if (img && !imageSet.includes(img)) imageSet.push(img); });
-    } else if (typeof d.productImage === "string" && d.productImage) {
-      imageSet.push(d.productImage);
+      d.productImage.forEach((img: string) => addImg(img));
+    } else if (typeof d.productImage === "string") {
+      addImg(d.productImage);
     }
-    if (Array.isArray(d.productImageSet)) {
-      d.productImageSet.forEach((img: string) => { if (img && !imageSet.includes(img)) imageSet.push(img); });
+
+    // 3. imgList / imageList — some endpoints return these
+    const imgListRaw = d.imgList || d.imageList || d.productImages || [];
+    if (Array.isArray(imgListRaw)) {
+      imgListRaw.forEach((item: any) => {
+        const url = typeof item === "string" ? item : item?.imageUrl || item?.url || item?.img;
+        if (url) addImg(url);
+      });
     }
+
+    // 4. bigImage / smallImage fallback
+    addImg(d.bigImage);
+    addImg(d.smallImage);
+    addImg(d.thumbnail);
+
+    // 5. Variant images (colors, styles, options)
+    if (Array.isArray(d.variants)) {
+      d.variants.forEach((v: any) => {
+        if (v.variantImage) addImg(v.variantImage);
+        if (v.img) addImg(v.img);
+      });
+    }
+
+    // Last resort: use cached image
     if (imageSet.length === 0 && cached) imageSet.push(cached.img);
+
 
     const usdPrice = parseFloat(d.sellPrice || d.productPrice || "10");
     const ghsPrice = Math.round(usdPrice * EXCHANGE_RATE * MARKUP);
