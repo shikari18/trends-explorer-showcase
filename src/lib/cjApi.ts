@@ -389,6 +389,27 @@ export function getProductById(id: string): CJProduct | null {
   return ALL_CACHED_PRODUCTS.find((p) => p.id === id) || null;
 }
 
+async function clientFetchProductDetailDirect(cjPid: string): Promise<any> {
+  try {
+    const authRes = await fetch("https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: API_KEY }),
+    });
+    const authData = await authRes.json();
+    const token = authData?.data?.accessToken;
+    if (!token) return null;
+
+    const res = await fetch(`https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${cjPid}`, {
+      headers: { "CJ-Access-Token": token },
+    });
+    return res.json();
+  } catch (e) {
+    console.error("Direct client fetch error:", e);
+    return null;
+  }
+}
+
 /**
  * Fetch full product detail live from CJ API.
  * Accepts EITHER a local cache ID (cj-women-s-clothing-1) OR a raw CJ PID (numeric/UUID).
@@ -414,16 +435,27 @@ export async function fetchProductDetail(
   const fallbackRating = parseFloat((4.0 + (brandIdx % 10) / 10).toFixed(1));
   const fallbackReviews = (200 + (brandIdx * 31)).toLocaleString();
 
-  try {
-    const data = await serverFetchProductDetail({ data: cjPid });
-    const d = data.data;
+  let data: any = null;
 
-    if (!d) {
-      if (cached) {
-        return { ...cached, images: [cached.img], videoUrl: null, description: cached.name, category: "", variants: [] };
-      }
-      return null;
+  try {
+    data = await serverFetchProductDetail({ data: cjPid });
+  } catch (err) {
+    console.warn("Server RPC detail fetch failed:", err);
+  }
+
+  // If server function returned no data or failed during client navigation, try direct client fetch
+  if (!data?.data && typeof window !== "undefined") {
+    data = await clientFetchProductDetailDirect(cjPid);
+  }
+
+  const d = data?.data;
+
+  if (!d) {
+    if (cached) {
+      return { ...cached, images: [cached.img], videoUrl: null, description: cached.name, category: "", variants: [] };
     }
+    return null;
+  }
 
     const imageSet: string[] = [];
 
