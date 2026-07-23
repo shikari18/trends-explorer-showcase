@@ -84,11 +84,11 @@ function Home() {
           }
         }
         newItems = interleaved;
-        more = arrays.some((a) => a.length >= perCat);
+        more = true; // CJ has millions of products — infinite scroll never stops
       } else {
         const res = await fetchCategoryPage(cat, pageNum, 50);
         newItems = res.products;
-        more = res.hasMore;
+        more = true; // Infinite pages from CJ API
       }
 
       setProducts((prev) => (pageNum === 1 ? newItems : [...prev, ...newItems]));
