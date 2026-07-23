@@ -198,11 +198,19 @@ const serverSearchCJProducts = createServerFn({ method: "GET" })
 
 
 const serverFetchProductDetail = createServerFn({ method: "GET" })
-  .validator((cjId: string) => cjId)
+  .validator((d: any) => {
+    if (typeof d === "object" && d !== null) {
+      return d.cjId || d.data || String(d);
+    }
+    return String(d);
+  })
   .handler(async ({ data: cjId }) => {
+    const cleanPid = (typeof cjId === "object" && cjId !== null)
+      ? ((cjId as any).cjId || (cjId as any).data || String(cjId))
+      : String(cjId);
     const token = await serverGetToken();
     const res = await fetch(
-      `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${cjId}`,
+      `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${cleanPid}`,
       { headers: { "CJ-Access-Token": token } }
     );
     return res.json();
