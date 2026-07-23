@@ -124,17 +124,29 @@ function ProductDetail() {
     : (product ? product.rawPrice : 0);
   const priceDisplay = `₵${activeGhsPrice.toLocaleString()}`;
 
-  const allMedia = product
-    ? [
-        ...product.images,
-        ...(product.videoUrl ? ["__video__"] : []),
-      ]
+  // Build media list: base images + any unique variant images + video
+  const allMedia: string[] = product
+    ? (() => {
+        const list = [...product.images];
+        // Add variant-specific images that aren't already in the gallery
+        if (product.variants) {
+          product.variants.forEach((v: any) => {
+            const img = v.variantImage;
+            if (img && !list.includes(img)) list.push(img);
+          });
+        }
+        if (product.videoUrl) list.push("__video__");
+        return list;
+      })()
     : [];
 
-  // Determine current active main image (selected variant image overrides index if active)
-  const activeImgUrl = (matchedVariant && matchedVariant.variantImage) 
-    ? matchedVariant.variantImage 
-    : (allMedia[activeImg] || product?.img || "");
+  // activeImgUrl is ALWAYS driven by activeImg index — never overridden by variant
+  // This ensures arrow buttons and swipes always work
+  const currentMedia = allMedia[activeImg];
+  const activeImgUrl =
+    !currentMedia || currentMedia === "__video__"
+      ? (product?.img || "")
+      : currentMedia;
 
   const addToCart = () => {
     if (!product) return;
@@ -520,7 +532,17 @@ function ProductDetail() {
                     return (
                       <button
                         key={c}
-                        onClick={() => setSelectedColor(c)}
+                        onClick={() => {
+                          setSelectedColor(c);
+                          // Find this color's variant image and jump to it in the gallery
+                          const variant = product?.variants?.find((v: any) =>
+                            (v.variantKey || "").split("-")[0]?.trim() === c
+                          );
+                          if (variant?.variantImage) {
+                            const idx = allMedia.indexOf(variant.variantImage);
+                            if (idx >= 0) setActiveImg(idx);
+                          }
+                        }}
                         className="px-4 py-2 rounded-full font-semibold transition-all cursor-pointer"
                         style={{
                           fontSize: 12.5,
