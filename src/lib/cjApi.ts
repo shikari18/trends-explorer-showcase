@@ -186,7 +186,7 @@ const serverSearchCJProducts = createServerFn({ method: "GET" })
     const params: Record<string, string> = {
       page: data.page.toString(),
       size: data.pageSize.toString(),
-      productNameEn: data.query,
+      productName: data.query,   // CJ API uses "productName" not "productNameEn"
     };
     if (data.categoryId) params.categoryId = data.categoryId;
     const qs = new URLSearchParams(params).toString();
@@ -196,6 +196,7 @@ const serverSearchCJProducts = createServerFn({ method: "GET" })
     return res.json();
   });
 
+
 const serverFetchProductDetail = createServerFn({ method: "GET" })
   .validator((cjId: string) => cjId)
   .handler(async ({ data: cjId }) => {
@@ -203,6 +204,47 @@ const serverFetchProductDetail = createServerFn({ method: "GET" })
     const res = await fetch(
       `https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${cjId}`,
       { headers: { "CJ-Access-Token": token } }
+    );
+    return res.json();
+  });
+
+export const serverPlaceCJOrder = createServerFn({ method: "POST" })
+  .validator((d: {
+    orderNumber: string;
+    shippingName: string;
+    shippingPhone: string;
+    shippingAddress: string;
+    shippingCity: string;
+    shippingProvince: string;
+    shippingCountry: string;
+    shippingCountryCode: string;
+    shippingZip: string;
+    products: Array<{ vid: string; quantity: number }>;
+  }) => d)
+  .handler(async ({ data }) => {
+    const token = await serverGetToken();
+    const body = {
+      orderNumber: data.orderNumber,
+      shippingZip: data.shippingZip,
+      shippingCountryCode: data.shippingCountryCode,
+      shippingCountry: data.shippingCountry,
+      shippingProvince: data.shippingProvince,
+      shippingCity: data.shippingCity,
+      shippingAddress: data.shippingAddress,
+      shippingCustomerName: data.shippingName,
+      shippingPhone: data.shippingPhone,
+      products: data.products,
+    };
+    const res = await fetch(
+      "https://developers.cjdropshipping.com/api2.0/v1/shopping/order/createOrder",
+      {
+        method: "POST",
+        headers: {
+          "CJ-Access-Token": token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
     );
     return res.json();
   });
