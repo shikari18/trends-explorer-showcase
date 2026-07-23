@@ -269,7 +269,6 @@ Return ONLY a JSON object — no explanation, no markdown:
       setScanning(false);
     }
   };
-  };
 
   const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
