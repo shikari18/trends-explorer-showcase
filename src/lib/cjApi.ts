@@ -419,42 +419,60 @@ export async function fetchProductDetail(
 
     const imageSet: string[] = [];
 
-    // Helper to add unique non-empty image URLs
-    const addImg = (url: string) => {
-      const clean = url?.trim();
-      if (clean && !imageSet.includes(clean)) imageSet.push(clean);
+    // Robust helper to extract clean image URLs from strings, JSON strings, arrays, or objects
+    const addImg = (val: any) => {
+      if (!val) return;
+
+      if (Array.isArray(val)) {
+        val.forEach(addImg);
+        return;
+      }
+
+      if (typeof val === "object") {
+        const url = val.imageUrl || val.url || val.img || val.src;
+        if (url) addImg(url);
+        return;
+      }
+
+      if (typeof val === "string") {
+        const clean = val.trim();
+        if (!clean) return;
+
+        // Handle JSON array strings like "[\"https://...\",\"https://...\"]"
+        if (clean.startsWith("[")) {
+          try {
+            const parsed = JSON.parse(clean);
+            if (Array.isArray(parsed)) {
+              parsed.forEach(addImg);
+              return;
+            }
+          } catch {}
+        }
+
+        // Handle comma-separated strings like "http://img1.jpg,http://img2.jpg"
+        if (clean.includes(",")) {
+          clean.split(",").forEach(addImg);
+          return;
+        }
+
+        // Valid image URL
+        if (clean.startsWith("http") && !imageSet.includes(clean)) {
+          imageSet.push(clean);
+        }
+      }
     };
 
-    // CJ returns images in multiple formats depending on product type:
-    // 1. productImageSet — comma-separated string of all images (most common)
-    if (typeof d.productImageSet === "string" && d.productImageSet) {
-      d.productImageSet.split(",").forEach(addImg);
-    } else if (Array.isArray(d.productImageSet)) {
-      d.productImageSet.forEach((img: string) => addImg(img));
-    }
-
-    // 2. productImage — main image (string or first of array)
-    if (Array.isArray(d.productImage)) {
-      d.productImage.forEach((img: string) => addImg(img));
-    } else if (typeof d.productImage === "string") {
-      addImg(d.productImage);
-    }
-
-    // 3. imgList / imageList — some endpoints return these
-    const imgListRaw = d.imgList || d.imageList || d.productImages || [];
-    if (Array.isArray(imgListRaw)) {
-      imgListRaw.forEach((item: any) => {
-        const url = typeof item === "string" ? item : item?.imageUrl || item?.url || item?.img;
-        if (url) addImg(url);
-      });
-    }
-
-    // 4. bigImage / smallImage fallback
+    // Add images from all CJ detail response fields
+    addImg(d.productImageSet);
+    addImg(d.productImage);
     addImg(d.bigImage);
     addImg(d.smallImage);
     addImg(d.thumbnail);
+    addImg(d.imgList);
+    addImg(d.imageList);
+    addImg(d.productImages);
 
-    // 5. Variant images (colors, styles, options)
+    // Add variant images (colors, sizes, styles)
     if (Array.isArray(d.variants)) {
       d.variants.forEach((v: any) => {
         if (v.variantImage) addImg(v.variantImage);
