@@ -543,12 +543,5 @@ export async function fetchProductDetail(
       category: d.categoryName || "",
       variants: d.variants || [],
     };
-  } catch (err) {
-    console.error("Live detail fetch failed:", err);
-    if (cached) {
-      return { ...cached, images: [cached.img], videoUrl: null, description: cached.name, category: "", variants: [] };
-    }
-    return null;
-  }
 }
 
