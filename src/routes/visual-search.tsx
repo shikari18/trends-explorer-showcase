@@ -112,37 +112,19 @@ function VisualSearch() {
       }
 
       if (!base64Data) {
-        setSearchError("No image stream to scan.");
+        setSearchError("No image captured. Please try again.");
         setScanning(false);
         return;
       }
 
-      const runFallback = async () => {
-        console.log("Running smart local fallback search...");
-        const { PRODUCTS } = await import("@/lib/products");
-        const count = 1 + Math.floor(Math.random() * 2);
-        const shuffled = [...PRODUCTS].sort(() => 0.5 - Math.random());
-        const selection = shuffled.slice(0, count);
-        
-        if (selection.length > 0) {
-          setMatchedProducts(selection as any[]);
-          setDetected(true);
-        } else {
-          setSearchError("No items available in store.");
-        }
-      };
-
-      // If no valid Gemini key (starts with AIzaSy or AQ.), run local fallback
-      if (!GEMINI_KEY || (!GEMINI_KEY.startsWith("AIzaSy") && !GEMINI_KEY.startsWith("AQ."))) {
-        setTimeout(async () => {
-          await runFallback();
-          setScanning(false);
-        }, 1200);
+      if (!GEMINI_KEY) {
+        setSearchError("Gemini API Key is missing. Please configure VITE_GEMINI_KEY.");
+        setScanning(false);
         return;
       }
 
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
         const response = await fetch(geminiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -164,13 +146,22 @@ Return ONLY a JSON object — no explanation, no markdown:
           })
         });
 
-        if (!response.ok) throw new Error(`Gemini status ${response.status}`);
+        if (response.status === 429) {
+          const errData = await response.json().catch(() => ({}));
+          console.warn("Gemini Rate Limit:", errData);
+          setSearchError("Google AI API quota limit reached. Please try again in 30 seconds.");
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Gemini API error (Status ${response.status})`);
+        }
 
         const data = await response.json();
         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
         console.log("AI raw response:", rawText);
 
-        if (!rawText) throw new Error("No AI response");
+        if (!rawText) throw new Error("No AI response returned.");
 
         // Parse the JSON response from Gemini
         let primaryTerm = "";
@@ -183,11 +174,10 @@ Return ONLY a JSON object — no explanation, no markdown:
             alternateTerm = parsed.alternate || "";
           }
         } catch {
-          // If JSON parse fails, use the raw text as primary
           primaryTerm = rawText.replace(/["{}]/g, "").split("\n")[0].trim();
         }
 
-        if (!primaryTerm) throw new Error("No search term identified");
+        if (!primaryTerm) throw new Error("Could not identify product in image.");
         console.log("AI search terms — primary:", primaryTerm, "alternate:", alternateTerm);
 
         // Try primary search term first
@@ -200,27 +190,24 @@ Return ONLY a JSON object — no explanation, no markdown:
           if (altMatches.length > matches.length) matches = altMatches;
         }
 
+        // If still no results, try key individual words
+        if (!matches || matches.length === 0) {
+          const words = primaryTerm.split(" ").filter(w => w.length > 3);
+          for (const word of words) {
+            const { products } = await searchCJProducts(word, 1, 8);
+            if (products.length > matches.length) matches = products;
+          }
+        }
+
         if (matches && matches.length > 0) {
           setMatchedProducts(matches);
           setDetected(true);
         } else {
-          // Last resort: try each word from primaryTerm individually
-          const words = primaryTerm.split(" ").filter(w => w.length > 3);
-          let found: typeof matches = [];
-          for (const word of words) {
-            const { products } = await searchCJProducts(word, 1, 8);
-            if (products.length > found.length) found = products;
-          }
-          if (found.length > 0) {
-            setMatchedProducts(found);
-            setDetected(true);
-          } else {
-            setSearchError(`Could not find "${primaryTerm}" in our store. Try the search page.`);
-          }
+          setSearchError(`No items found matching "${primaryTerm}" in store catalog.`);
         }
-      } catch (geminiErr) {
-        console.warn("Gemini API call failed, falling back to smart local matching:", geminiErr);
-        await runFallback();
+      } catch (geminiErr: any) {
+        console.error("Gemini API call failed:", geminiErr);
+        setSearchError(geminiErr?.message || "AI image scan failed. Please try again.");
       }
     } catch (err) {
       console.error("AI scanning outer error:", err);
