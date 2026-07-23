@@ -93,6 +93,39 @@ const INTERLEAVED_PRODUCTS: CJProduct[] = (() => {
   return result;
 })();
 
+// Keyword-to-category mapping for accurate search routing
+const KEYWORD_CATEGORY_MAP: Array<[string[], string]> = [
+  [["airpod", "earphone", "earbuds", "headphone", "earbud", "headset", "speaker", "tv", "television", "camera", "drone", "projector", "stereo"], "Consumer Electronics"],
+  [["keyboard", "mouse", "laptop", "computer", "monitor", "printer", "router", "usb", "hdmi", "office", "desk"], "Computer & Office"],
+  [["phone", "iphone", "android", "charger", "cable", "phone case", "screen protector", "power bank", "sim"], "Phones & Accessories"],
+  [["gaming", "game", "console", "playstation", "xbox", "nintendo", "joystick", "controller", "gamepad", "esports"], "Toys, Kids & Babies"],
+  [["toy", "kids", "baby", "toddler", "infant", "doll", "lego", "puzzle", "plush", "stuffed"], "Toys, Kids & Babies"],
+  [["dog", "cat", "pet", "puppy", "kitten", "bird", "fish", "hamster", "leash", "collar", "aquarium"], "Pet Supplies"],
+  [["yoga", "gym", "running", "bike", "cycling", "camping", "hiking", "football", "soccer", "tennis", "fitness", "dumbbell", "resistance", "treadmill"], "Sports & Outdoors"],
+  [["lamp", "chair", "table", "sofa", "couch", "bed", "pillow", "curtain", "kitchen", "garden", "plant", "vase", "shelf", "storage", "mattress"], "Home, Garden & Furniture"],
+  [["tool", "drill", "hammer", "paint", "screw", "plumbing", "electrical", "ladder", "wrench", "saw"], "Home Improvement"],
+  [["makeup", "skincare", "perfume", "fragrance", "lotion", "serum", "hair", "nail", "lipstick", "foundation", "mascara", "shampoo", "conditioner"], "Health, Beauty & Hair"],
+  [["ring", "necklace", "watch", "bracelet", "earring", "pendant", "chain", "bangle", "brooch", "jewelry"], "Jewelry & Watches"],
+  [["car", "auto", "motor", "vehicle", "tire", "wheel", "dashboard", "seat cover", "motorcycle", "helmet"], "Automobiles & Motorcycles"],
+  [["shoe", "sneaker", "bag", "backpack", "purse", "wallet", "handbag", "boots", "sandal", "loafer", "heels", "tote"], "Bags & Shoes"],
+  [["dress", "blouse", "skirt", "women", "ladies", "female", "lingerie", "bra", "legging", "top"], "Women's Clothing"],
+  [["shirt", "pants", "jeans", "men", "male", "suit", "tie", "trousers", "shorts", "hoodie", "sweater"], "Men's Clothing"],
+];
+
+// Fuzzy keyword detect — also handles typos like 'airpord' matching 'airpod'
+function detectCategoryFromQuery(query: string): string | null {
+  const q = query.toLowerCase().trim();
+  for (const [keywords, category] of KEYWORD_CATEGORY_MAP) {
+    for (const kw of keywords) {
+      // Exact contains match
+      if (q.includes(kw)) return category;
+      // Fuzzy: if query has ≥5 chars and starts with same 4 chars as keyword (handles 1-char typos)
+      if (q.length >= 5 && kw.length >= 5 && q.substring(0, 4) === kw.substring(0, 4)) return category;
+    }
+  }
+  return null;
+}
+
 const API_KEY = "CJ5632497@api@dd88d4a73e5d4f07905c86c16f263276";
 const AUTH_URL = "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken";
 const LIST_URL = "https://developers.cjdropshipping.com/api2.0/v1/product/listV2";
@@ -147,10 +180,17 @@ const serverFetchCategoryPage = createServerFn({ method: "GET" })
   });
 
 const serverSearchCJProducts = createServerFn({ method: "GET" })
-  .validator((d: { query: string; page: number; pageSize: number }) => d)
+  .validator((d: { query: string; page: number; pageSize: number; categoryId?: string }) => d)
   .handler(async ({ data }) => {
     const token = await serverGetToken();
-    const res = await fetch(`${LIST_URL}?page=${data.page}&size=${data.pageSize}&productName=${encodeURIComponent(data.query)}`, {
+    const params: Record<string, string> = {
+      page: data.page.toString(),
+      size: data.pageSize.toString(),
+      productNameEn: data.query,
+    };
+    if (data.categoryId) params.categoryId = data.categoryId;
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`${LIST_URL}?${qs}`, {
       headers: { "CJ-Access-Token": token }
     });
     return res.json();
@@ -231,39 +271,68 @@ export async function fetchCategoryPage(
 }
 
 /**
- * Search across all categories live from CJ API
+ * Search across all categories live from CJ API.
+ * Detects product category from keywords so "airpod" → Consumer Electronics.
  */
 export async function searchCJProducts(
   query: string,
   page = 1,
   pageSize = 40
 ): Promise<{ products: CJProduct[]; hasMore: boolean }> {
+  const detectedCategory = detectCategoryFromQuery(query);
+  const categoryId = detectedCategory ? CATEGORY_MAP[detectedCategory] : undefined;
+
+  console.log(`Search: "${query}" → detected category: ${detectedCategory || "none"}`);
+
   try {
-    const res = await serverSearchCJProducts({ data: { query, page, pageSize } });
+    const res = await serverSearchCJProducts({ data: { query, page, pageSize, categoryId } });
     const content = res.data?.content || [];
     const list: any[] = content[0]?.productList || res.data?.list || [];
 
     const offset = (page - 1) * pageSize;
     const products = list
-      .map((item, i) => mapItem(item, i, "search", offset))
+      .map((item, i) => mapItem(item, i, detectedCategory || "search", offset))
       .filter(Boolean) as CJProduct[];
+
+    // If live API returned nothing despite category detection, fall through to cache
+    if (products.length === 0) throw new Error("No live results");
 
     return { products, hasMore: list.length >= pageSize };
   } catch {
     const cleanQuery = query.toLowerCase().trim();
-    const matched = cleanQuery
-      ? ALL_CACHED_PRODUCTS.filter(
-          (p) =>
-            p.name.toLowerCase().includes(cleanQuery) ||
-            p.brand.toLowerCase().includes(cleanQuery)
-        )
-      : ALL_CACHED_PRODUCTS;
+
+    // Prefer cache slice from the detected category first
+    const categoryPool = detectedCategory
+      ? ((cjCache.products || {}) as Record<string, CJProduct[]>)[detectedCategory] || []
+      : [];
+
+    // Search in category pool, then fall back to all products
+    let matched = categoryPool.filter(
+      (p) => p.name.toLowerCase().includes(cleanQuery) || !cleanQuery
+    );
+
+    // If nothing in category pool, try broader all-products search
+    if (matched.length === 0) {
+      matched = cleanQuery
+        ? ALL_CACHED_PRODUCTS.filter(
+            (p) =>
+              p.name.toLowerCase().includes(cleanQuery) ||
+              p.brand.toLowerCase().includes(cleanQuery)
+          )
+        : (categoryPool.length > 0 ? categoryPool : ALL_CACHED_PRODUCTS);
+    }
+
+    // If STILL nothing (typo, no match), return top items from detected category
+    if (matched.length === 0 && categoryPool.length > 0) {
+      matched = categoryPool.slice(0, pageSize);
+    }
 
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
     return { products: matched.slice(start, end), hasMore: end < matched.length };
   }
 }
+
 
 // Find a product locally by ID
 export function getProductById(id: string): CJProduct | null {

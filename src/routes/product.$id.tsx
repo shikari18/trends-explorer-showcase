@@ -32,6 +32,7 @@ function ProductDetail() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
 
   // Variant selector states
   const [selectedColor, setSelectedColor] = useState("");
@@ -176,25 +177,35 @@ function ProductDetail() {
     }
   };
 
-  // Touch swipe handlers for image gallery
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  };
+  // Touch swipe handlers for image gallery — use native passive listeners so scroll is never blocked
+  useEffect(() => {
+    const el = imageContainerRef.current;
+    if (!el) return;
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    // Only handle horizontal swipes (dx > dy to avoid conflicting with scroll)
-    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < 0 && activeImg < allMedia.length - 1) {
-      setActiveImg((i) => i + 1);
+    const onStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    };
+    const onEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = e.changedTouches[0].clientY - touchStartY.current;
+      // Only handle horizontal swipes; ignore if vertical dominates
+      if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      setActiveImg((i) => {
+        if (dx < 0) return Math.min(i + 1, allMedia.length - 1);
+        return Math.max(i - 1, 0);
+      });
       setVideoPlaying(false);
-    } else if (dx > 0 && activeImg > 0) {
-      setActiveImg((i) => i - 1);
-      setVideoPlaying(false);
-    }
-  };
+    };
+
+    // { passive: true } ensures these listeners NEVER block page scroll
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchend", onEnd);
+    };
+  }, [allMedia.length]);
 
   // AR View — use model-viewer if available, else full-screen image overlay
   const launchAR = () => {
@@ -286,9 +297,10 @@ function ProductDetail() {
               </button>
             </div>
 
-            {/* Main media viewer — swipeable */}
+            {/* Main media viewer — swipeable (native passive touch events) */}
             <div className="mt-4 px-5">
               <div
+                ref={imageContainerRef}
                 className="relative overflow-hidden"
                 style={{
                   aspectRatio: "1 / 1.05",
@@ -296,8 +308,6 @@ function ProductDetail() {
                   background: "#F7F7F5",
                   boxShadow: "0 24px 60px -30px rgba(17,17,17,0.25), inset 0 0 0 1px rgba(17,17,17,0.03)",
                 }}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
               >
                 {/* Image or Video */}
                 {currentIsVideo && product.videoUrl ? (
