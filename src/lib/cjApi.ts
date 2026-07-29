@@ -162,16 +162,18 @@ const serverFetchCategoryPage = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const token = await serverGetToken();
     let catId = CATEGORY_MAP[data.category];
+    let apiPage = data.page;
 
     // For "Random" mode: rotate through categories by page number
     if (data.category === "Random") {
       const allCatIds = Object.values(CATEGORY_MAP);
       catId = allCatIds[(data.page - 1) % allCatIds.length];
+      apiPage = Math.ceil(data.page / allCatIds.length) || 1;
     }
 
     const url = catId
-      ? `${LIST_URL}?page=${Math.ceil(data.page / Object.values(CATEGORY_MAP).length) || 1}&size=${data.pageSize}&categoryId=${catId}`
-      : `${LIST_URL}?page=${data.page}&size=${data.pageSize}`;
+      ? `${LIST_URL}?page=${apiPage}&size=${data.pageSize}&categoryId=${catId}`
+      : `${LIST_URL}?page=${apiPage}&size=${data.pageSize}`;
 
     const res = await fetch(url, {
       headers: { "CJ-Access-Token": token }
@@ -301,23 +303,40 @@ export async function fetchCategoryPage(
       .map((item, i) => mapItem(item, i, category, offset))
       .filter(Boolean) as CJProduct[];
 
-    return {
-      products,
-      hasMore: list.length >= pageSize
-    };
+    if (products.length > 0) {
+      return {
+        products,
+        hasMore: true,
+      };
+    }
   } catch (err) {
-    console.error("Live category fetch failed, falling back to cache:", err);
-    const list = category === "Random"
-      ? INTERLEAVED_PRODUCTS
-      : ((cjCache.products || {}) as Record<string, CJProduct[]>)[category] || [];
-      
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
-    return {
-      products: list.slice(start, end),
-      hasMore: end < list.length
-    };
+    console.error("Live category fetch notice:", err);
   }
+
+  // Fallback to cache loop if live API is unreachable
+  const rawList = category === "Random"
+    ? INTERLEAVED_PRODUCTS
+    : ((cjCache.products || {}) as Record<string, CJProduct[]>)[category] || ALL_CACHED_PRODUCTS;
+    
+  const totalItems = rawList.length || 1;
+  const start = ((page - 1) * pageSize) % totalItems;
+  const sliced = rawList.slice(start, start + pageSize);
+
+  let products = [...sliced];
+  if (products.length < pageSize && totalItems > 0) {
+    const remaining = pageSize - products.length;
+    products = [...products, ...rawList.slice(0, remaining)];
+  }
+
+  const mapped = products.map((item, i) => ({
+    ...item,
+    id: `${item.id}-p${page}-${i}`,
+  }));
+
+  return {
+    products: mapped,
+    hasMore: true,
+  };
 }
 
 const TERM_SYNONYMS: Record<string, string[]> = {
