@@ -329,58 +329,92 @@ export async function searchCJProducts(
   page = 1,
   pageSize = 40
 ): Promise<{ products: CJProduct[]; hasMore: boolean }> {
-  const detectedCategory = detectCategoryFromQuery(query);
-  const categoryId = detectedCategory ? CATEGORY_MAP[detectedCategory] : undefined;
-
-  console.log(`Search: "${query}" → detected category: ${detectedCategory || "none"}`);
-
-  try {
-    const res = await serverSearchCJProducts({ data: { query, page, pageSize, categoryId } });
-    const content = res.data?.content || [];
-    const list: any[] = content[0]?.productList || res.data?.list || [];
-
-    const offset = (page - 1) * pageSize;
-    const products = list
-      .map((item, i) => mapItem(item, i, detectedCategory || "search", offset))
-      .filter(Boolean) as CJProduct[];
-
-    // If live API returned nothing despite category detection, fall through to cache
-    if (products.length === 0) throw new Error("No live results");
-
-    return { products, hasMore: list.length >= pageSize };
-  } catch {
-    const cleanQuery = query.toLowerCase().trim();
-
-    // Prefer cache slice from the detected category first
-    const categoryPool = detectedCategory
-      ? ((cjCache.products || {}) as Record<string, CJProduct[]>)[detectedCategory] || []
-      : [];
-
-    // Search in category pool, then fall back to all products
-    let matched = categoryPool.filter(
-      (p) => p.name.toLowerCase().includes(cleanQuery) || !cleanQuery
-    );
-
-    // If nothing in category pool, try broader all-products search
-    if (matched.length === 0) {
-      matched = cleanQuery
-        ? ALL_CACHED_PRODUCTS.filter(
-            (p) =>
-              p.name.toLowerCase().includes(cleanQuery) ||
-              p.brand.toLowerCase().includes(cleanQuery)
-          )
-        : (categoryPool.length > 0 ? categoryPool : ALL_CACHED_PRODUCTS);
-    }
-
-    // If STILL nothing (typo, no match), return top items from detected category
-    if (matched.length === 0 && categoryPool.length > 0) {
-      matched = categoryPool.slice(0, pageSize);
-    }
-
+  const cleanQuery = query.toLowerCase().trim();
+  if (!cleanQuery) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
-    return { products: matched.slice(start, end), hasMore: end < matched.length };
+    return { products: ALL_CACHED_PRODUCTS.slice(start, end), hasMore: end < ALL_CACHED_PRODUCTS.length };
   }
+
+  const detectedCategory = detectCategoryFromQuery(cleanQuery);
+  const categoryId = detectedCategory ? CATEGORY_MAP[detectedCategory] : undefined;
+
+  console.log(`Search: "${cleanQuery}" → detected category: ${detectedCategory || "none"}`);
+
+  // Step 1: Live search WITH categoryId (if category detected)
+  if (categoryId) {
+    try {
+      const res = await serverSearchCJProducts({ data: { query: cleanQuery, page, pageSize, categoryId } });
+      const content = res.data?.content || [];
+      const list: any[] = content[0]?.productList || res.data?.list || [];
+      const offset = (page - 1) * pageSize;
+      const products = list.map((item, i) => mapItem(item, i, detectedCategory || "search", offset)).filter(Boolean) as CJProduct[];
+
+      if (products.length > 0) {
+        return { products, hasMore: list.length >= pageSize };
+      }
+    } catch {}
+  }
+
+  // Step 2: Broad live search WITHOUT category restriction
+  try {
+    const res = await serverSearchCJProducts({ data: { query: cleanQuery, page, pageSize } });
+    const content = res.data?.content || [];
+    const list: any[] = content[0]?.productList || res.data?.list || [];
+    const offset = (page - 1) * pageSize;
+    const products = list.map((item, i) => mapItem(item, i, detectedCategory || "search", offset)).filter(Boolean) as CJProduct[];
+
+    if (products.length > 0) {
+      return { products, hasMore: list.length >= pageSize };
+    }
+  } catch {}
+
+  // Step 3: Search by core individual keywords if multi-word (e.g. "leather bag" → "bag")
+  const words = cleanQuery.split(/\s+/).filter((w) => w.length >= 3);
+  if (words.length > 1) {
+    for (const word of words) {
+      try {
+        const res = await serverSearchCJProducts({ data: { query: word, page, pageSize } });
+        const content = res.data?.content || [];
+        const list: any[] = content[0]?.productList || res.data?.list || [];
+        const offset = (page - 1) * pageSize;
+        const products = list.map((item, i) => mapItem(item, i, "search", offset)).filter(Boolean) as CJProduct[];
+        if (products.length > 0) {
+          return { products, hasMore: list.length >= pageSize };
+        }
+      } catch {}
+    }
+  }
+
+  // Step 4: Fallback to cache pool
+  const categoryPool = detectedCategory
+    ? ((cjCache.products || {}) as Record<string, CJProduct[]>)[detectedCategory] || []
+    : [];
+
+  let matched = categoryPool.filter(
+    (p) => p.name.toLowerCase().includes(cleanQuery) || words.some((w) => p.name.toLowerCase().includes(w))
+  );
+
+  if (matched.length === 0) {
+    matched = ALL_CACHED_PRODUCTS.filter(
+      (p) =>
+        p.name.toLowerCase().includes(cleanQuery) ||
+        p.brand.toLowerCase().includes(cleanQuery) ||
+        words.some((w) => p.name.toLowerCase().includes(w))
+    );
+  }
+
+  if (matched.length === 0 && categoryPool.length > 0) {
+    matched = categoryPool.slice(0, pageSize);
+  }
+
+  if (matched.length === 0) {
+    matched = ALL_CACHED_PRODUCTS.slice(0, pageSize);
+  }
+
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize;
+  return { products: matched.slice(start, end), hasMore: end < matched.length };
 }
 
 

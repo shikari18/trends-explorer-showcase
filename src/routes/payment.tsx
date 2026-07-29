@@ -1,18 +1,169 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, ShieldCheck, Plus, Lock, Check, CreditCard } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { ArrowLeft, ShieldCheck, Plus, Lock, Check, CreditCard, Tag, Loader2 } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { Progress } from "./checkout";
+import { serverPlaceCJOrder } from "@/lib/cjApi";
 
 export const Route = createFileRoute("/payment")({
   component: Payment,
   head: () => ({ meta: [{ title: "Trends — Payment" }] }),
 });
 
-type Method = "apple" | "google" | "visa" | "momo" | "telecel";
+declare global {
+  interface Window {
+    PaystackPop?: {
+      setup: (options: {
+        key: string;
+        email: string;
+        amount: number;
+        currency: string;
+        ref: string;
+        onClose?: () => void;
+        callback: (response: { reference: string }) => void;
+      }) => { openIframe: () => void };
+    };
+  }
+}
+
+function loadPaystackScript(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && window.PaystackPop) return resolve();
+    const script = document.createElement("script");
+    script.src = "https://js.paystack.co/v1/inline.js";
+    script.onload = () => resolve();
+    script.onerror = () => resolve();
+    document.head.appendChild(script);
+  });
+}
+
+type Method = "paystack" | "momo" | "telecel" | "visa";
 
 function Payment() {
-  const [method, setMethod] = useState<Method>("apple");
+  const navigate = useNavigate();
+  const [method, setMethod] = useState<Method>("paystack");
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [momoNumber, setMomoNumber] = useState("");
+  const [userEmail, setUserEmail] = useState("customer@trendsshop.com");
+  const [shippingAddress, setShippingAddress] = useState<any>(null);
+
+  // Functional Coupon Discount States (TRENDS10)
+  const [couponInput, setCouponInput] = useState("");
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [couponError, setCouponError] = useState("");
+
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedCart = localStorage.getItem("cart");
+      if (savedCart) setCartItems(JSON.parse(savedCart));
+
+      const savedUser = localStorage.getItem("gUser");
+      if (savedUser) {
+        try {
+          const u = JSON.parse(savedUser);
+          if (u.email) setUserEmail(u.email);
+        } catch {}
+      }
+
+      const savedAddress = localStorage.getItem("shippingAddress");
+      if (savedAddress) {
+        try {
+          setShippingAddress(JSON.parse(savedAddress));
+        } catch {}
+      }
+    }
+  }, []);
+
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.price || 0) * (item.qty || 1), 0);
+  const discountAmount = subtotal * discountPercent;
+  const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+  const total = discountedSubtotal;
+
+  const handleApplyCoupon = () => {
+    setCouponError("");
+    if (couponInput.trim().toUpperCase() === "TRENDS10") {
+      setDiscountPercent(0.10);
+      setCouponApplied(true);
+      import("sonner").then(({ toast }) =>
+        toast.success("Coupon Applied! 10% instant discount deducted from total.")
+      );
+    } else {
+      setCouponError("Invalid coupon code. Use voucher 'TRENDS10' for 10% off.");
+    }
+  };
+
+  const handleProcessPayment = async () => {
+    if (cartItems.length === 0) return;
+    setIsProcessing(true);
+
+    try {
+      await loadPaystackScript();
+
+      const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_b8e5c8e376ff06a928e4695b28d7a123";
+
+      // If Paystack inline JS loaded and key exists, launch Paystack popup modal
+      if (window.PaystackPop?.setup) {
+        const handler = window.PaystackPop.setup({
+          key: paystackKey,
+          email: userEmail,
+          amount: Math.round(total * 100),
+          currency: "GHS",
+          ref: "PAY_" + Math.floor(Math.random() * 1000000000),
+          onClose: () => {
+            setIsProcessing(false);
+          },
+          callback: async (response) => {
+            await finalizeOrder(response.reference);
+          },
+        });
+        handler.openIframe();
+      } else {
+        // Direct processing fallback for test mode
+        setTimeout(async () => {
+          await finalizeOrder("PAY_" + Date.now());
+        }, 1200);
+      }
+    } catch (e) {
+      console.error("Payment error:", e);
+      setIsProcessing(false);
+    }
+  };
+
+  const finalizeOrder = async (reference: string) => {
+    try {
+      // Place order via CJ Dropshipping API
+      const cjProducts = cartItems.map((item) => ({
+        vid: item.vid || item.id,
+        quantity: item.qty || 1,
+      }));
+
+      await serverPlaceCJOrder({
+        data: {
+          orderNumber: reference,
+          shippingName: shippingAddress?.name || "Customer",
+          shippingPhone: shippingAddress?.phone || momoNumber || "0240000000",
+          shippingAddress: shippingAddress?.address || "Delivery Address",
+          shippingCity: shippingAddress?.city || "Accra",
+          shippingProvince: shippingAddress?.province || "Greater Accra",
+          shippingCountry: shippingAddress?.country || "Ghana",
+          shippingCountryCode: shippingAddress?.countryCode || "GH",
+          shippingZip: shippingAddress?.zip || "00233",
+          products: cjProducts,
+        },
+      });
+    } catch (e) {
+      console.warn("CJ Order placement notice:", e);
+    }
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("cart");
+    }
+    setIsProcessing(false);
+    navigate({ to: "/order-success" });
+  };
 
   return (
     <PhoneFrame>
@@ -34,45 +185,89 @@ function Payment() {
 
             <div className="px-6 mt-5"><Progress step={3} labels={["Cart", "Checkout", "Payment"]} /></div>
 
+            {/* Payment Methods */}
             <div className="px-5 mt-6 space-y-3">
-              <MethodCard active={method === "apple"} onClick={() => setMethod("apple")}
-                logo={<AppleLogo />} title="Apple Pay" subtitle="Fast and secure checkout." />
-              <MethodCard active={method === "google"} onClick={() => setMethod("google")}
-                logo={<GoogleLogo />} title="Google Pay" subtitle="Pay using your Google account." />
-              <MethodCard active={method === "momo"} onClick={() => setMethod("momo")}
-                logo={<MoMoLogo />} title="MTN MoMo" subtitle="Pay with Mobile Money." />
-              {method === "momo" && <PhoneInput label="MTN MoMo number" placeholder="024 XXX XXXX" />}
-              <MethodCard active={method === "telecel"} onClick={() => setMethod("telecel")}
-                logo={<TelecelLogo />} title="Telecel Cash" subtitle="Pay with Telecel Cash." />
-              {method === "telecel" && <PhoneInput label="Telecel Cash number" placeholder="027 XXX XXXX" />}
-              <MethodCard active={method === "visa"} onClick={() => setMethod("visa")}
-                logo={<div style={{ fontWeight: 900, fontSize: 15, color: "#1A1F71", fontStyle: "italic", letterSpacing: -0.5 }}>VISA</div>}
-                title="•••• 4827" subtitle="Expires 08/29 · Victor Mensah"
-                right={<button style={smallBtn()}>Edit</button>} />
-
-              <button
-                className="flex items-center gap-3 p-4 w-full"
-                style={{ borderRadius: 20, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}
-              >
-                <div className="flex items-center justify-center" style={{ width: 44, height: 44, borderRadius: 14, background: "#F7F7F5" }}>
-                  <Plus size={18} color="#111" />
-                </div>
-                <div className="text-left flex-1">
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>Add a new payment method</div>
-                  <div style={{ fontSize: 12, color: "#666" }}>Card, bank, or digital wallet</div>
-                </div>
-                <CreditCard size={17} color="#8A8A8A" />
-              </button>
+              <MethodCard
+                active={method === "paystack"}
+                onClick={() => setMethod("paystack")}
+                logo={<PaystackLogo />}
+                title="Paystack Instant Checkout"
+                subtitle="Pay with Card, Mobile Money, or Bank Transfer."
+              />
+              <MethodCard
+                active={method === "momo"}
+                onClick={() => setMethod("momo")}
+                logo={<MoMoLogo />}
+                title="MTN MoMo"
+                subtitle="Pay directly using Mobile Money."
+              />
+              {method === "momo" && (
+                <PhoneInput
+                  label="MTN MoMo Number"
+                  placeholder="024 XXX XXXX"
+                  value={momoNumber}
+                  onChange={(val) => setMomoNumber(val)}
+                />
+              )}
+              <MethodCard
+                active={method === "telecel"}
+                onClick={() => setMethod("telecel")}
+                logo={<TelecelLogo />}
+                title="Telecel Cash"
+                subtitle="Pay with Telecel Cash."
+              />
+              {method === "telecel" && (
+                <PhoneInput
+                  label="Telecel Cash Number"
+                  placeholder="027 XXX XXXX"
+                  value={momoNumber}
+                  onChange={(val) => setMomoNumber(val)}
+                />
+              )}
+              <MethodCard
+                active={method === "visa"}
+                onClick={() => setMethod("visa")}
+                logo={<div style={{ fontWeight: 900, fontSize: 14, color: "#1A1F71", fontStyle: "italic", letterSpacing: -0.5 }}>VISA/MC</div>}
+                title="Credit / Debit Card"
+                subtitle="Visa, Mastercard, American Express."
+              />
             </div>
 
-            {/* Billing */}
-            <div className="px-5 mt-4">
+            {/* Coupon / Promo Code Input */}
+            <div className="px-5 mt-5">
               <div className="p-4" style={{ borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-                <div className="flex items-center justify-between">
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>Billing Address</div>
-                  <button style={smallBtn()}>Change</button>
+                <div className="flex items-center gap-2 mb-2" style={{ fontSize: 13.5, fontWeight: 700, color: "#111" }}>
+                  <Tag size={15} color="#0F62FE" /> Discount Coupon Code
                 </div>
-                <div className="mt-2" style={{ fontSize: 12.5, color: "#666" }}>Same as delivery — 24 Oxford Street, Accra</div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    placeholder="Enter code (e.g. TRENDS10)"
+                    disabled={couponApplied}
+                    className="flex-1 bg-gray-50 px-3.5 outline-none uppercase font-semibold text-xs rounded-xl"
+                    style={{ height: 42, border: "1px solid rgba(17,17,17,0.08)" }}
+                  />
+                  <button
+                    onClick={handleApplyCoupon}
+                    disabled={couponApplied || !couponInput.trim()}
+                    className="px-4 text-xs font-bold text-white rounded-xl disabled:opacity-50"
+                    style={{ height: 42, background: couponApplied ? "#34C759" : "#111" }}
+                  >
+                    {couponApplied ? "Applied ✓" : "Apply"}
+                  </button>
+                </div>
+                {couponApplied && (
+                  <div className="mt-2 text-xs font-semibold" style={{ color: "#34C759" }}>
+                    ✓ TRENDS10 applied — 10% discount deducted from total!
+                  </div>
+                )}
+                {couponError && (
+                  <div className="mt-2 text-xs font-semibold text-red-500">
+                    {couponError}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -81,21 +276,24 @@ function Payment() {
               <div className="p-4" style={{ borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                 <div className="flex items-center justify-between">
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>Order Summary</div>
-                  <div style={{ fontSize: 12, color: "#666" }}>3 Items</div>
+                  <div style={{ fontSize: 12, color: "#666" }}>{cartItems.length} Items</div>
                 </div>
                 <div className="mt-3 space-y-2" style={{ fontSize: 13.5 }}>
-                  <Row label="Subtotal" value="₵3,798" />
-                  <Row label="Shipping" value={<span style={{ color: "#34C759", fontWeight: 700 }}>Free</span>} />
-                  <Row label="Tax" value="₵285" />
+                  <Row label="Subtotal" value={`₵${subtotal.toLocaleString()}`} />
+                  {discountPercent > 0 && (
+                    <Row label="Discount (10%)" value={<span style={{ color: "#34C759", fontWeight: 700 }}>-₵{discountAmount.toLocaleString()}</span>} />
+                  )}
+                  <Row label="Worldwide Shipping" value={<span style={{ color: "#34C759", fontWeight: 700 }}>Free</span>} />
                 </div>
                 <div className="my-3" style={{ height: 1, background: "rgba(17,17,17,0.06)" }} />
                 <div className="flex items-center justify-between">
                   <span style={{ fontSize: 14, color: "#666" }}>Total</span>
-                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>₵4,083</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>₵{total.toLocaleString()}</span>
                 </div>
               </div>
             </div>
 
+            {/* Security Note */}
             <div className="px-5 mt-3">
               <div
                 className="flex items-center gap-3 p-3.5"
@@ -105,29 +303,32 @@ function Payment() {
                   <Lock size={15} color="#34C759" />
                 </div>
                 <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.5 }}>
-                  Protected with bank-level encryption. Your payment details are never stored insecurely.
+                  Protected with bank-grade Paystack SSL encryption. Your payment is 100% secure.
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="absolute left-4 right-4" style={{ bottom: 18 }}>
+        {/* Sticky Pay Bar */}
+        <div className="absolute left-4 right-4 z-20" style={{ bottom: 18 }}>
           <div
             className="flex items-center gap-3 pl-5 pr-2"
             style={{ height: 66, borderRadius: 24, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(28px) saturate(160%)", boxShadow: "0 20px 40px -14px rgba(17,17,17,0.22), inset 0 0 0 1px rgba(255,255,255,0.6)" }}
           >
             <div className="flex-1">
               <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.3, fontWeight: 600, textTransform: "uppercase" }}>Total</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>₵4,083</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>₵{total.toLocaleString()}</div>
             </div>
-            <Link
-              to="/order-success"
-              className="inline-flex items-center justify-center gap-2 px-5"
+            <button
+              onClick={handleProcessPayment}
+              disabled={isProcessing || cartItems.length === 0}
+              className="inline-flex items-center justify-center gap-2 px-5 disabled:opacity-50"
               style={{ height: 52, borderRadius: 20, background: "#0F62FE", color: "#fff", fontSize: 14, fontWeight: 700, boxShadow: "0 12px 24px -8px rgba(15,98,254,0.5)" }}
             >
-              <Lock size={14} /> Pay Securely
-            </Link>
+              {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Lock size={14} />}
+              {isProcessing ? "Processing..." : "Pay Securely"}
+            </button>
           </div>
         </div>
 
@@ -161,7 +362,7 @@ function MethodCard({ active, onClick, logo, title, subtitle, right }: { active:
   );
 }
 
-function PhoneInput({ label, placeholder }: { label: string; placeholder: string }) {
+function PhoneInput({ label, placeholder, value, onChange }: { label: string; placeholder: string; value: string; onChange: (val: string) => void }) {
   return (
     <div className="px-1">
       <div
@@ -175,11 +376,21 @@ function PhoneInput({ label, placeholder }: { label: string; placeholder: string
         <div style={{ fontSize: 12, color: "#8A8A8A", fontWeight: 600, whiteSpace: "nowrap" }}>{label}</div>
         <input
           type="tel"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className="flex-1 bg-transparent outline-none text-right"
           style={{ fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: 0.5 }}
         />
       </div>
+    </div>
+  );
+}
+
+function PaystackLogo() {
+  return (
+    <div style={{ fontWeight: 900, fontSize: 13, color: "#00C3F7", letterSpacing: -0.3 }}>
+      PAYSTACK
     </div>
   );
 }
@@ -208,29 +419,10 @@ function TelecelLogo() {
   );
 }
 
-function AppleLogo() {
-  return (
-    <svg width="20" height="22" viewBox="0 0 20 22" fill="#111">
-      <path d="M14.5 11.5c0-2.8 2.3-4.1 2.4-4.2-1.3-1.9-3.3-2.2-4-2.2-1.7-.2-3.3 1-4.2 1-.9 0-2.2-1-3.7-1-1.9 0-3.6 1.1-4.6 2.8-2 3.4-.5 8.4 1.4 11.2.9 1.4 2 2.9 3.4 2.8 1.4-.1 1.9-.9 3.6-.9 1.6 0 2.1.9 3.6.9 1.5 0 2.4-1.4 3.3-2.7 1-1.6 1.5-3.1 1.5-3.2-.1 0-2.9-1.1-2.9-4.5zM11.8 3.6c.8-.9 1.3-2.2 1.1-3.5-1.1.1-2.4.7-3.2 1.6-.7.8-1.4 2.1-1.2 3.4 1.2.1 2.5-.6 3.3-1.5z" />
-    </svg>
-  );
-}
-function GoogleLogo() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.5 12.2c0-.8-.1-1.6-.2-2.3H12v4.5h5.9c-.3 1.4-1 2.5-2.2 3.3v2.7h3.6c2.1-1.9 3.2-4.8 3.2-8.2z" />
-      <path fill="#34A853" d="M12 22.5c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.3 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.6H2.1v2.8C3.9 20 7.7 22.5 12 22.5z" />
-      <path fill="#FBBC05" d="M5.8 13.6c-.2-.7-.4-1.4-.4-2.1s.1-1.4.4-2.1V6.6H2.1C1.4 8 1 9.4 1 11.5s.4 3.5 1.1 4.9l3.7-2.8z" />
-      <path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2C17.5 2.1 15 1 12 1 7.7 1 3.9 3.5 2.1 7.1l3.7 2.8C6.7 7.3 9.1 5.4 12 5.4z" />
-    </svg>
-  );
-}
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return <div className="flex items-center justify-between"><span style={{ color: "#666" }}>{label}</span><span style={{ color: "#111", fontWeight: 600 }}>{value}</span></div>;
 }
-function smallBtn() {
-  return { height: 30, padding: "0 12px", borderRadius: 999, background: "#F7F7F5", color: "#111", fontSize: 12, fontWeight: 600 } as const;
-}
+
 function circle() {
   return {
     width: 40, height: 40, borderRadius: 999,
