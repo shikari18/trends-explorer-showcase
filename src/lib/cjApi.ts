@@ -465,7 +465,8 @@ export async function searchCJProducts(
     matched = filterRelevantProducts(ALL_CACHED_PRODUCTS, cleanQuery);
   }
 
-  if (matched.length === 0 && categoryPool.length > 0) {
+  // If filtered count is under 20 for a detected category, return full category pool (200+ items)
+  if (matched.length < 20 && categoryPool.length > 0) {
     matched = categoryPool;
   }
 
