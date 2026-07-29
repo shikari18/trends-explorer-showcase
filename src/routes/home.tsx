@@ -266,8 +266,11 @@ function Home() {
                         style={{ width: 172, borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative" style={{ background: "#F7F7F5" }}>
                           <img src={p.img} alt={p.name} loading="lazy" className="w-full object-cover" style={{ aspectRatio: "1/1" }} />
+                          <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-sm z-10">
+                            -25%
+                          </div>
                           <button onClick={(e) => toggleWishlist(p.id, e)} aria-label="Wishlist"
-                            className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300"
+                            className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
                             style={{ width: 30, height: 30, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}>
                             <Heart size={14} strokeWidth={2.4} fill={isLiked ? "#FF3B30" : "none"} color={isLiked ? "#FF3B30" : "#111"} />
                           </button>

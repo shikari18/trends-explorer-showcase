@@ -512,13 +512,27 @@ function ProductDetail() {
                 <span style={{ fontSize: 12.5, color: "#8A8A8A" }}>({product.reviews} Reviews)</span>
               </div>
               <div className="mt-4 flex items-center justify-between">
-                <div style={{ fontSize: 28, fontWeight: 700, color: "#111", letterSpacing: -0.8 }}>
-                  {priceDisplay}
+                <div className="flex items-baseline gap-2.5">
+                  <div style={{ fontSize: 28, fontWeight: 700, color: "#111", letterSpacing: -0.8 }}>
+                    {priceDisplay}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: "#8A8A8A", textDecoration: "line-through" }}>
+                    ₵{Math.round((product?.rawPrice || 3798) * 1.3).toLocaleString()}
+                  </div>
+                  <div className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
+                    -23% OFF
+                  </div>
                 </div>
                 <div className="inline-flex items-center gap-1.5">
                   <span style={{ width: 8, height: 8, borderRadius: 999, background: "#34C759", boxShadow: "0 0 0 3px rgba(52,199,89,0.18)" }} />
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: "#34C759" }}>In Stock</span>
                 </div>
+              </div>
+
+              {/* Promo code badge */}
+              <div className="mt-3.5 flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-medium">
+                <span className="font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded text-[10px]">TRENDS10</span>
+                <span>Get an extra 10% OFF with voucher code TRENDS10</span>
               </div>
             </div>
 
