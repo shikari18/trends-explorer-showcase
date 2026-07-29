@@ -491,7 +491,7 @@ function ProductDetail() {
                   style={{ height: 20, borderRadius: 999, background: "rgba(15,98,254,0.10)" }}
                 >
                   <Check size={10} strokeWidth={3} color="#0F62FE" />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#0F62FE", letterSpacing: 0.2 }}>CJ Verified</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#0F62FE", letterSpacing: 0.2 }}>Trends Verified</span>
                 </div>
               </div>
               <h1 className="mt-1.5" style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.5, color: "#111", lineHeight: 1.25 }}>

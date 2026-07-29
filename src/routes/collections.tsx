@@ -97,7 +97,7 @@ function Collections() {
                 className="mt-2"
                 style={{ fontSize: 14.5, color: "#666", letterSpacing: -0.1, maxWidth: 300 }}
               >
-                Explore categories and source products directly from CJ.
+                Explore categories and source products directly.
               </p>
             </div>
 
@@ -186,7 +186,7 @@ function Collections() {
                         color: "rgba(255,255,255,0.85)",
                       }}
                     >
-                      Discover the latest arrivals live from CJ.
+                      Discover the latest arrivals.
                     </div>
                   </div>
                   <Link

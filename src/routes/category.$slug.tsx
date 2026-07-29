@@ -12,7 +12,7 @@ export const Route = createFileRoute("/category/$slug")({
     return {
       meta: [
         { title: `Trends — ${title}` },
-        { name: "description", content: `Explore millions of ${title.toLowerCase()} items live from CJ Dropshipping.` },
+        { name: "description", content: `Explore millions of ${title.toLowerCase()} items on Trends.` },
       ],
     };
   },

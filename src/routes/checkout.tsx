@@ -198,7 +198,7 @@ function Checkout() {
             <div>
               <div style={{ fontSize: 26, fontWeight: 700, color: "#111", letterSpacing: -0.7 }}>Order Placed!</div>
               <p className="mt-2" style={{ fontSize: 14, color: "#666", lineHeight: 1.55 }}>
-                Your order has been submitted to CJ Dropshipping.<br />You'll receive shipping updates via email.
+                Your order has been placed successfully.<br />You'll receive shipping updates via email.
               </p>
             </div>
             <Link to="/home" className="inline-flex items-center justify-center" style={{ height: 52, padding: "0 32px", borderRadius: 999, background: "#0F62FE", color: "#fff", fontSize: 14, fontWeight: 700 }}>
@@ -314,8 +314,8 @@ function Checkout() {
                     <Truck size={17} color="#0F62FE" />
                   </div>
                   <div className="flex-1">
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#111" }}>CJ Express Delivery</div>
-                    <div style={{ fontSize: 11.5, color: "#666" }}>7–15 Business Days · Ships from CJ Warehouse</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#111" }}>Trends Express Delivery</div>
+                    <div style={{ fontSize: 11.5, color: "#666" }}>7–15 Business Days · Global Express Shipping</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>₵30</div>
@@ -347,12 +347,12 @@ function Checkout() {
               </div>
             </div>
 
-            {/* CJ products notice */}
+            {/* products notice */}
             <div className="px-5 mt-3">
               <div className="flex items-center gap-2.5 p-3.5" style={{ borderRadius: 18, background: "rgba(15,98,254,0.04)", boxShadow: "inset 0 0 0 1px rgba(15,98,254,0.1)" }}>
                 <Package size={15} color="#0F62FE" />
                 <div style={{ fontSize: 12, color: "#444", lineHeight: 1.45 }}>
-                  <strong style={{ color: "#0F62FE" }}>Shipped by CJ Dropshipping.</strong> Your order goes directly to CJ's warehouse and ships worldwide. Millions of products available.
+                  <strong style={{ color: "#0F62FE" }}>Fulfilled by Trends Direct.</strong> Your order goes directly to our global fulfillment center and ships worldwide. Millions of products available.
                 </div>
               </div>
             </div>
@@ -369,39 +369,29 @@ function Checkout() {
 
         {/* Sticky bottom bar */}
         <div className="absolute left-4 right-4" style={{ bottom: 18 }}>
-          <div className="flex items-center gap-3 pl-5 pr-2" style={{ height: 66, borderRadius: 24, background: "rgba(255,255,255,0.88)", backdropFilter: "blur(28px) saturate(160%)", boxShadow: "0 20px 40px -14px rgba(17,17,17,0.22), inset 0 0 0 1px rgba(255,255,255,0.6)" }}>
+          <div className="flex items-center gap-3 pl-5 pr-2" style={{ height: 66, borderRadius: 24, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(28px) saturate(160%)", boxShadow: "0 20px 40px -14px rgba(17,17,17,0.22), inset 0 0 0 1px rgba(255,255,255,0.6)" }}>
             <div className="flex-1">
               <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.3, fontWeight: 600, textTransform: "uppercase" }}>Total</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>₵{total.toLocaleString()}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>₵{total.toLocaleString()}</div>
             </div>
-            {googleUser ? (
-              <button
-                onClick={handlePlaceOrder}
-                disabled={placing}
-                className="inline-flex items-center justify-center gap-2 px-5 active:scale-95 transition-all"
-                style={{ height: 52, borderRadius: 20, background: "#0F62FE", color: "#fff", fontSize: 14, fontWeight: 700, letterSpacing: -0.2, boxShadow: "0 12px 24px -8px rgba(15,98,254,0.5)", minWidth: 160 }}
-              >
-                {placing ? <><Loader2 size={16} className="animate-spin" /> Placing...</> : "Place Order →"}
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowSignInModal(true)}
-                className="inline-flex items-center justify-center gap-2 px-5 active:scale-95 transition-all"
-                style={{ height: 52, borderRadius: 20, background: "#0F62FE", color: "#fff", fontSize: 14, fontWeight: 700, letterSpacing: -0.2, boxShadow: "0 12px 24px -8px rgba(15,98,254,0.5)" }}
-              >
-                <LogIn size={16} />
-                Sign In to Pay
-              </button>
-            )}
+            <button
+              onClick={handlePlaceOrder}
+              disabled={placing}
+              className="inline-flex items-center justify-center gap-2 px-5 disabled:opacity-50"
+              style={{ height: 52, borderRadius: 20, background: "#0F62FE", color: "#fff", fontSize: 14, fontWeight: 700, boxShadow: "0 12px 24px -8px rgba(15,98,254,0.5)" }}
+            >
+              {placing ? <Loader2 size={16} className="animate-spin" /> : null}
+              {placing ? "Processing..." : "Continue to Payment"}
+            </button>
           </div>
         </div>
 
         {/* Google Sign In Modal */}
         {showSignInModal && (
-          <div className="absolute inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}>
-            <div className="w-full p-5 pb-8" style={{ borderRadius: "28px 28px 0 0", background: "#fff", boxShadow: "0 -20px 60px -20px rgba(17,17,17,0.2)" }}>
+          <div className="absolute inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}>
+            <div className="p-6 relative animate-in slide-in-from-bottom duration-300" style={{ background: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, boxShadow: "0 -20px 40px rgba(0,0,0,0.2)" }}>
               {/* Handle */}
-              <div className="flex justify-center mb-5">
+              <div className="flex justify-center mb-3">
                 <div style={{ width: 36, height: 4, borderRadius: 999, background: "rgba(17,17,17,0.12)" }} />
               </div>
               <button onClick={() => setShowSignInModal(false)} className="absolute top-5 right-5 flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: 999, background: "#F7F7F5" }}>
@@ -410,7 +400,7 @@ function Checkout() {
 
               <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>Sign in to continue</div>
               <p className="mt-1.5" style={{ fontSize: 13.5, color: "#666", lineHeight: 1.5 }}>
-                Sign in to place your order and track your shipment from CJ Dropshipping.
+                Sign in to place your order and track your shipment.
               </p>
 
               <button
