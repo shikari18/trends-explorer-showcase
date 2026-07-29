@@ -320,9 +320,51 @@ export async function fetchCategoryPage(
   }
 }
 
+const TERM_SYNONYMS: Record<string, string[]> = {
+  bag: ["bag", "handbag", "backpack", "tote", "purse", "satchel", "pouch", "duffel", "clutch", "crossbody", "briefcase", "messenger", "wallet", "luggage"],
+  bags: ["bag", "handbag", "backpack", "tote", "purse", "satchel", "pouch", "duffel", "clutch", "crossbody", "briefcase", "messenger", "wallet", "luggage"],
+  shoe: ["shoe", "sneaker", "boot", "sandal", "loafer", "heels", "footwear", "clog", "slipper"],
+  shoes: ["shoe", "sneaker", "boot", "sandal", "loafer", "heels", "footwear", "clog", "slipper"],
+  phone: ["phone", "iphone", "android", "smartphone", "cell"],
+  phones: ["phone", "iphone", "android", "smartphone", "cell"],
+  watch: ["watch", "smartwatch", "chronograph", "timepiece"],
+  watches: ["watch", "smartwatch", "chronograph", "timepiece"],
+};
+
+const EXCLUSION_TERMS: Record<string, string[]> = {
+  bag: ["shoe", "sneaker", "boot", "sandal", "loafer", "heels", "dress", "skirt", "blouse", "top"],
+  bags: ["shoe", "sneaker", "boot", "sandal", "loafer", "heels", "dress", "skirt", "blouse", "top"],
+  shoe: ["bag", "backpack", "purse", "tote", "wallet", "shirt", "dress", "watch"],
+  shoes: ["bag", "backpack", "purse", "tote", "wallet", "shirt", "dress", "watch"],
+};
+
+function filterRelevantProducts(products: CJProduct[], query: string): CJProduct[] {
+  const clean = query.toLowerCase().trim();
+  if (!clean) return products;
+
+  const words = clean.split(/\s+/).filter((w) => w.length >= 3);
+  if (words.length === 0) return products;
+
+  const primaryWord = words.find((w) => TERM_SYNONYMS[w]);
+  const synonyms = primaryWord ? TERM_SYNONYMS[primaryWord] : words;
+  const exclusions = primaryWord ? (EXCLUSION_TERMS[primaryWord] || []) : [];
+
+  return products.filter((p) => {
+    const nameLower = p.name.toLowerCase();
+
+    // Must NOT contain exclusion terms unless explicitly searched for
+    if (exclusions.some((ex) => nameLower.includes(ex) && !clean.includes(ex))) {
+      return false;
+    }
+
+    // Must match at least one synonym or search word
+    return synonyms.some((syn) => nameLower.includes(syn));
+  });
+}
+
 /**
  * Search across all categories live from CJ API.
- * Detects product category from keywords so "airpod" → Consumer Electronics.
+ * Uses multi-tiered search & strict relevance filtering.
  */
 export async function searchCJProducts(
   query: string,
@@ -348,7 +390,10 @@ export async function searchCJProducts(
       const content = res.data?.content || [];
       const list: any[] = content[0]?.productList || res.data?.list || [];
       const offset = (page - 1) * pageSize;
-      const products = list.map((item, i) => mapItem(item, i, detectedCategory || "search", offset)).filter(Boolean) as CJProduct[];
+      let products = list.map((item, i) => mapItem(item, i, detectedCategory || "search", offset)).filter(Boolean) as CJProduct[];
+
+      // Filter relevant products
+      products = filterRelevantProducts(products, cleanQuery);
 
       if (products.length > 0) {
         return { products, hasMore: list.length >= pageSize };
@@ -362,7 +407,9 @@ export async function searchCJProducts(
     const content = res.data?.content || [];
     const list: any[] = content[0]?.productList || res.data?.list || [];
     const offset = (page - 1) * pageSize;
-    const products = list.map((item, i) => mapItem(item, i, detectedCategory || "search", offset)).filter(Boolean) as CJProduct[];
+    let products = list.map((item, i) => mapItem(item, i, detectedCategory || "search", offset)).filter(Boolean) as CJProduct[];
+
+    products = filterRelevantProducts(products, cleanQuery);
 
     if (products.length > 0) {
       return { products, hasMore: list.length >= pageSize };
@@ -378,7 +425,10 @@ export async function searchCJProducts(
         const content = res.data?.content || [];
         const list: any[] = content[0]?.productList || res.data?.list || [];
         const offset = (page - 1) * pageSize;
-        const products = list.map((item, i) => mapItem(item, i, "search", offset)).filter(Boolean) as CJProduct[];
+        let products = list.map((item, i) => mapItem(item, i, "search", offset)).filter(Boolean) as CJProduct[];
+
+        products = filterRelevantProducts(products, cleanQuery);
+
         if (products.length > 0) {
           return { products, hasMore: list.length >= pageSize };
         }
@@ -386,30 +436,15 @@ export async function searchCJProducts(
     }
   }
 
-  // Step 4: Fallback to cache pool
+  // Step 4: Fallback to cache pool with strict relevance filtering
   const categoryPool = detectedCategory
     ? ((cjCache.products || {}) as Record<string, CJProduct[]>)[detectedCategory] || []
-    : [];
+    : ALL_CACHED_PRODUCTS;
 
-  let matched = categoryPool.filter(
-    (p) => p.name.toLowerCase().includes(cleanQuery) || words.some((w) => p.name.toLowerCase().includes(w))
-  );
+  let matched = filterRelevantProducts(categoryPool, cleanQuery);
 
   if (matched.length === 0) {
-    matched = ALL_CACHED_PRODUCTS.filter(
-      (p) =>
-        p.name.toLowerCase().includes(cleanQuery) ||
-        p.brand.toLowerCase().includes(cleanQuery) ||
-        words.some((w) => p.name.toLowerCase().includes(w))
-    );
-  }
-
-  if (matched.length === 0 && categoryPool.length > 0) {
-    matched = categoryPool.slice(0, pageSize);
-  }
-
-  if (matched.length === 0) {
-    matched = ALL_CACHED_PRODUCTS.slice(0, pageSize);
+    matched = filterRelevantProducts(ALL_CACHED_PRODUCTS, cleanQuery);
   }
 
   const start = (page - 1) * pageSize;
