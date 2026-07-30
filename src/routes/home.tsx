@@ -120,8 +120,8 @@ function Home() {
       { threshold: 0.1 }
     );
 
-    if (observerTarget.current) {
-      observerRef.current.observe(observerTarget.current);
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
     }
 
     return () => observerRef.current?.disconnect();
@@ -403,7 +403,7 @@ function Home() {
             </div>
 
             {/* Sentinel for infinite scroll */}
-            <div ref={observerTarget} className="flex justify-center py-6">
+            <div ref={sentinelRef} className="flex justify-center py-6">
               {loading && hasMore && <Loader2 size={24} className="animate-spin text-neutral-400" />}
             </div>
 

@@ -29,7 +29,7 @@ const SLIDES = [
     body: "Discover fine gold, sparkling stones, and artisan craftsmanship curated for your elegance.",
   },
   {
-    image: curatedImage,
+    image: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=800&q=80",
     alt: "Modern designer apparel and fashion",
     title: "Modern Designer\nClothing",
     body: "Elevate your daily wardrobe with trendsetting apparel and high-end fashion essentials.",
