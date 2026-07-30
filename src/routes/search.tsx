@@ -116,7 +116,7 @@ function SearchScreen() {
         <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-32">
             {/* Title */}
-            <div className="px-6 pt-4">
+            <div className="px-6 pt-10 pb-1">
               <h1 style={{ fontSize: 32, lineHeight: 1.05, fontWeight: 700, letterSpacing: -0.9, color: "#111" }}>
                 Search
               </h1>

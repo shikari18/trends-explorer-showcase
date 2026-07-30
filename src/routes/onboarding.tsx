@@ -17,22 +17,22 @@ export const Route = createFileRoute("/onboarding")({
 
 const SLIDES = [
   {
-    image: bagImage,
-    alt: "Cream leather handbag on a white marble pedestal",
-    title: "Discover premium\nproducts",
-    body: "Explore curated collections from the world's most exclusive brands.",
-  },
-  {
-    image: curatedImage,
-    alt: "Curated editorial styling",
-    title: "Curated just\nfor you",
-    body: "Personal recommendations powered by Trends AI, tuned to your taste.",
+    image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80",
+    alt: "Pro Gaming Headset with RGB lighting",
+    title: "Pro Gaming\nHeadsets & Gear",
+    body: "Immerse yourself with ultra-low latency audio, 7.1 surround sound, and RGB lighting.",
   },
   {
     image: luxuryImage,
-    alt: "Luxury lifestyle imagery",
-    title: "Shop the world's\nfinest",
-    body: "From daily essentials to iconic pieces — delivered with care.",
+    alt: "Luxury gold and gemstone jewelry",
+    title: "Exquisite\nLuxury Jewelry",
+    body: "Discover fine gold, sparkling stones, and artisan craftsmanship curated for your elegance.",
+  },
+  {
+    image: curatedImage,
+    alt: "Modern designer apparel and fashion",
+    title: "Modern Designer\nClothing",
+    body: "Elevate your daily wardrobe with trendsetting apparel and high-end fashion essentials.",
   },
 ];
 
@@ -64,16 +64,10 @@ function Onboarding() {
         }}
       />
 
-      <div className="relative flex justify-end px-6 pt-4">
+      <div className="relative flex justify-end px-6 pt-12 pb-2">
         <button
           onClick={() => navigate({ to: "/home" })}
-          style={{
-            fontSize: 14.5,
-            fontWeight: 500,
-            color: "#666666",
-            letterSpacing: -0.1,
-            padding: "6px 10px",
-          }}
+          className="px-4 py-1.5 rounded-full bg-black/5 active:bg-black/10 font-semibold text-sm transition-colors text-neutral-700"
         >
           Skip
         </button>

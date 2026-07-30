@@ -120,8 +120,8 @@ function Home() {
       { threshold: 0.1 }
     );
 
-    if (sentinelRef.current) {
-      observerRef.current.observe(sentinelRef.current);
+    if (observerTarget.current) {
+      observerRef.current.observe(observerTarget.current);
     }
 
     return () => observerRef.current?.disconnect();
@@ -160,9 +160,37 @@ function Home() {
     }
   };
 
-  const newArrivals = products.slice(0, 6);
-  const recommended = products.slice(6, 8);
+  // Dynamic daily rotation for 8 New Arrivals (changes every day)
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+  const newArrivalsOffset = (dayOfYear * 8) % Math.max(1, products.length - 8);
+  const newArrivals = products.slice(newArrivalsOffset, newArrivalsOffset + 8);
+  const recommended = products.slice(newArrivalsOffset + 8, newArrivalsOffset + 14);
   const trending = products;
+
+  // 9 Hero Banner Themes (auto-cycles every 4 seconds)
+  const HERO_THEMES = [
+    { title: "Pro Gaming\nHeadsets & Gear", subtitle: "Level Up Your Setup", tag: "Gaming Gear", img: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80", slug: "consumer-electronics" },
+    { title: "Educational Toys\n& Kids Gaming", subtitle: "Play & Learn Collection", tag: "Toys & Hobbies", img: "https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?auto=format&fit=crop&w=800&q=80", slug: "toys-kids-babies" },
+    { title: "Summer\nEssentials", subtitle: "Hot Weather Favorites", tag: "Summer 26", img: heroSummer, slug: "womens-clothing" },
+    { title: "Luxury Gold\n& Gemstones", subtitle: "Artisan Fine Jewelry", tag: "Fine Jewelry", img: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=800&q=80", slug: "jewelry-watches" },
+    { title: "Streetwear\n& Urban Tops", subtitle: "Bold Modern Apparel", tag: "Streetwear", img: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80", slug: "mens-clothing" },
+    { title: "Performance\nSneakers & Boots", subtitle: "Step Into Comfort", tag: "Footwear", img: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80", slug: "bags-shoes" },
+    { title: "Smart Gadgets\n& Audio Gear", subtitle: "Next-Gen Technology", tag: "Tech Essentials", img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80", slug: "phones-accessories" },
+    { title: "Premium Pet\nSupplies & Toys", subtitle: "Pamper Your Pets", tag: "Pet Accessories", img: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80", slug: "pet-supplies" },
+    { title: "Modern Home\n& Living Decor", subtitle: "Transform Your Space", tag: "Home Aesthetics", img: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80", slug: "home-garden-furniture" }
+  ];
+
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => (prev + 1) % HERO_THEMES.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const currentHero = HERO_THEMES[heroIndex];
 
   return (
     <PhoneFrame>
@@ -176,7 +204,6 @@ function Home() {
 
         <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-32">
-            {/* Greeting */}
             <div className="px-6 pt-6 flex items-start justify-between">
               <div>
                 <div style={{ fontSize: 13.5, color: "#8A8A8A", letterSpacing: -0.1, fontWeight: 500 }}>Good Morning</div>
@@ -193,7 +220,6 @@ function Home() {
               What are you looking for today?
             </p>
 
-            {/* Search */}
             <div className="px-6 mt-5">
               <div 
                 onClick={() => navigate({ to: "/search" })}
@@ -213,24 +239,24 @@ function Home() {
               </div>
             </div>
 
-            {/* Hero */}
+            {/* Dynamic Hero Banner (Rotates through 9 Themes) */}
             <div className="px-6 mt-6">
-              <div className="relative w-full overflow-hidden"
+              <div className="relative w-full overflow-hidden transition-all duration-500"
                 style={{ aspectRatio: "4 / 5", borderRadius: 24, background: "#F2EFE9", boxShadow: "0 24px 50px -24px rgba(17,17,17,0.20), 0 8px 20px -12px rgba(17,17,17,0.10), inset 0 0 0 1px rgba(17,17,17,0.03)" }}>
-                <img src={heroSummer} alt="Summer essentials" className="w-full h-full object-cover" />
-                <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(20,15,10,0.35) 100%)" }} />
+                <img src={currentHero.img} alt={currentHero.title} className="w-full h-full object-cover transition-opacity duration-700" />
+                <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(10,10,10,0.65) 100%)" }} />
                 <div className="absolute left-5 top-5">
-                  <div className="inline-flex items-center gap-1.5 px-2.5" style={{ height: 26, borderRadius: 999, background: "rgba(255,255,255,0.75)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5)" }}>
+                  <div className="inline-flex items-center gap-1.5 px-2.5" style={{ height: 26, borderRadius: 999, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5)" }}>
                     <span style={{ width: 6, height: 6, borderRadius: 999, background: "#0F62FE" }} />
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#111", letterSpacing: 0.2, textTransform: "uppercase" }}>Current Collection</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#111", letterSpacing: 0.2, textTransform: "uppercase" }}>{currentHero.tag}</span>
                   </div>
                 </div>
                 <div className="absolute left-5 right-5 bottom-5 flex items-end justify-between">
                   <div>
-                    <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.85)", letterSpacing: 0.4, textTransform: "uppercase", fontWeight: 600 }}>Summer 26</div>
-                    <div className="mt-1" style={{ fontSize: 26, lineHeight: 1.05, fontWeight: 700, letterSpacing: -0.7, color: "#fff" }}>Summer<br />Essentials</div>
+                    <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.85)", letterSpacing: 0.4, textTransform: "uppercase", fontWeight: 600 }}>{currentHero.subtitle}</div>
+                    <div className="mt-1" style={{ fontSize: 24, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.7, color: "#fff", whiteSpace: "pre-line" }}>{currentHero.title}</div>
                   </div>
-                  <Link to="/collections" className="inline-flex items-center gap-1.5 px-4"
+                  <Link to="/category/$slug" params={{ slug: currentHero.slug }} className="inline-flex items-center gap-1.5 px-4"
                     style={{ height: 38, borderRadius: 999, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", fontSize: 13.5, fontWeight: 600, color: "#111", letterSpacing: -0.2, boxShadow: "0 6px 16px -6px rgba(17,17,17,0.3)" }}>
                     Explore <ArrowUpRight size={14} strokeWidth={2.4} />
                   </Link>
@@ -238,23 +264,10 @@ function Home() {
               </div>
             </div>
 
-            {/* Categories */}
-            <div className="mt-7">
-              <div className="flex gap-2 overflow-x-auto px-6 pb-1" style={{ scrollbarWidth: "none" }}>
-                {CATEGORIES.map((cat) => {
-                  const active = cat === activeCat;
-                  return (
-                    <button key={cat} onClick={() => setActiveCat(cat)} className="shrink-0 transition-all"
-                      style={{ height: 38, padding: "0 16px", borderRadius: 999, fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, color: active ? "#fff" : "#111", background: active ? "#0F62FE" : "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: active ? "0 8px 20px -8px rgba(15,98,254,0.5), inset 0 1px 0 rgba(255,255,255,0.2)" : "0 1px 2px rgba(17,17,17,0.04), 0 6px 16px -10px rgba(17,17,17,0.12), inset 0 0 0 1px rgba(17,17,17,0.05)" }}>
-                      {cat}
-                    </button>
-                  );
-                })}
-              </div>
+            {/* New Arrivals — 8 items daily rotation, no see all button */}
+            <div className="flex items-end justify-between px-6 mt-8">
+              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>New Arrivals</h2>
             </div>
-
-            {/* New Arrivals */}
-            <SectionHeader title="New Arrivals" action="See all" />
             <div className="flex gap-3 overflow-x-auto px-6 mt-4" style={{ scrollbarWidth: "none" }}>
               {initialLoading
                 ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
@@ -266,9 +279,6 @@ function Home() {
                         style={{ width: 172, borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative" style={{ background: "#F7F7F5" }}>
                           <img src={p.img} alt={p.name} loading="lazy" className="w-full object-cover" style={{ aspectRatio: "1/1" }} />
-                          <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500 text-white shadow-sm z-10">
-                            -25%
-                          </div>
                           <button onClick={(e) => toggleWishlist(p.id, e)} aria-label="Wishlist"
                             className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
                             style={{ width: 30, height: 30, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}>
@@ -292,10 +302,12 @@ function Home() {
                   })}
             </div>
 
-            {/* Recommended */}
+            {/* Recommended — no see all button */}
             {!initialLoading && recommended.length > 0 && (
               <>
-                <SectionHeader title="Recommended For You" action="See all" />
+                <div className="flex items-end justify-between px-6 mt-8">
+                  <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>Recommended For You</h2>
+                </div>
                 <div className="grid grid-cols-2 gap-3 px-6 mt-4">
                   {recommended.map((p) => {
                     const isAdded = addedToCartIds.includes(p.id);
@@ -321,8 +333,41 @@ function Home() {
               </>
             )}
 
-            {/* Trending — full infinite list */}
-            <SectionHeader title={`All ${activeCat} Products`} action="Filters" />
+            {/* Trending — full infinite list with Category Dropdown Filter */}
+            <div className="flex items-end justify-between px-6 mt-8 relative">
+              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>All {activeCat} Products</h2>
+              <button 
+                onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                style={{ fontSize: 13, fontWeight: 600, color: "#0F62FE", letterSpacing: -0.2 }}
+                className="px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 transition-colors"
+              >
+                Categories ▾
+              </button>
+
+              {/* Category Dropdown Modal */}
+              {showCategoryDropdown && (
+                <div className="absolute right-6 top-10 z-50 w-64 bg-white dark:bg-neutral-900 rounded-2xl p-2 shadow-2xl border border-neutral-200 dark:border-neutral-800 max-h-72 overflow-y-auto">
+                  <div className="px-3 py-2 text-xs font-bold text-neutral-400 uppercase tracking-wider">Select Category</div>
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        setActiveCat(cat);
+                        setShowCategoryDropdown(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-xl transition-colors font-medium ${
+                        cat === activeCat
+                          ? "bg-blue-600 text-white font-bold"
+                          : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3 px-6 mt-4">
               {initialLoading
                 ? Array.from({ length: 6 }).map((_, i) => <SkeletonGridCard key={i} />)
@@ -357,25 +402,15 @@ function Home() {
                   })}
             </div>
 
-            {/* Infinite scroll sentinel */}
-            <div ref={sentinelRef} className="flex justify-center py-6">
-              {loading && !initialLoading && (
-                <div className="flex items-center gap-2" style={{ color: "#8A8A8A", fontSize: 13 }}>
-                  <Loader2 size={16} className="animate-spin" />
-                  Loading more products...
-                </div>
-              )}
-              {!hasMore && !initialLoading && products.length > 0 && (
-                <div style={{ fontSize: 12, color: "#C9C9C7", fontWeight: 600 }}>
-                  All {activeCat} products loaded ({products.length.toLocaleString()})
-                </div>
-              )}
+            {/* Sentinel for infinite scroll */}
+            <div ref={observerTarget} className="flex justify-center py-6">
+              {loading && hasMore && <Loader2 size={24} className="animate-spin text-neutral-400" />}
             </div>
 
             {/* Brands */}
-            <SectionHeader title="Popular Brands" action="See all" />
+            <SectionHeader title="Popular Brands" action="Explore" />
             <div className="flex gap-2.5 overflow-x-auto px-6 mt-4" style={{ scrollbarWidth: "none" }}>
-              {BRANDS.map((b) => (
+              {["Aura", "Nordic", "Luxe", "Verve", "Prism", "Zenith"].map((b) => (
                 <div key={b} className="shrink-0 flex items-center justify-center"
                   style={{ width: 92, height: 68, borderRadius: 20, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 10px 24px -16px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)", fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: -0.3 }}>
                   {b}
