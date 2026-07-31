@@ -61,31 +61,27 @@ function Home() {
       let more: boolean;
 
       if (cat === "Random") {
-        // Tech & Gaming prioritized category list
-        const techFirstCatKeys = [
+        // Balanced 14-category mix (Tech, Furniture, Clothes, Jewelry, Shoes, Toys, etc.)
+        const allCatKeys = [
           "Consumer Electronics",
+          "Home, Garden & Furniture",
+          "Women's Clothing",
           "Phones & Accessories",
+          "Men's Clothing",
+          "Jewelry & Watches",
           "Computer & Office",
           "Bags & Shoes",
-          "Jewelry & Watches",
-          "Men's Clothing",
           "Toys, Kids & Babies",
           "Sports & Outdoors",
           "Home Improvement",
-          "Home, Garden & Furniture",
-          "Automobiles & Motorcycles",
-          "Health, Beauty & Hair",
           "Pet Supplies",
-          "Women's Clothing"
+          "Automobiles & Motorcycles",
+          "Health, Beauty & Hair"
         ];
-        const catsPerPage = 7;
-        const startIdx = ((pageNum - 1) * catsPerPage) % techFirstCatKeys.length;
-        const selectedCats = Array.from({ length: catsPerPage }, (_, i) =>
-          techFirstCatKeys[(startIdx + i) % techFirstCatKeys.length]
-        );
-        const perCat = 8;
+        // Fetch 4 products from ALL 14 categories = 56 diverse products per page
+        const perCat = 4;
         const results = await Promise.allSettled(
-          selectedCats.map((c) => fetchCategoryPage(c, Math.ceil(pageNum / 2) || 1, perCat))
+          allCatKeys.map((c) => fetchCategoryPage(c, pageNum, perCat))
         );
         const arrays = results
           .filter((r): r is PromiseFulfilledResult<{ products: CJProduct[]; hasMore: boolean }> => r.status === "fulfilled")
