@@ -245,10 +245,16 @@ function Home() {
                   Victor <span style={{ fontWeight: 400 }}>👋</span>
                 </h1>
               </div>
-              <Link to="/profile" aria-label="Go to profile" className="flex items-center justify-center shrink-0"
-                style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)", fontSize: 15, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>
-                V
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link to="/wishlist" aria-label="Wishlist" className="flex items-center justify-center shrink-0"
+                  style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)" }}>
+                  <Heart size={20} strokeWidth={2.2} color="#FF3B30" fill="#FF3B30" />
+                </Link>
+                <Link to="/profile" aria-label="Go to profile" className="flex items-center justify-center shrink-0"
+                  style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)", fontSize: 15, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>
+                  V
+                </Link>
+              </div>
             </div>
             <p className="px-6 mt-1.5" style={{ fontSize: 14.5, color: "#666666", letterSpacing: -0.1 }}>
               What are you looking for today?
