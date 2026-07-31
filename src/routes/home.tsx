@@ -61,18 +61,32 @@ function Home() {
       let more: boolean;
 
       if (cat === "Random") {
-        // For Random: fetch from 7 different category buckets in parallel, interleave them
-        const allCatKeys = Object.keys(CATEGORY_MAP);
+        // Tech & Gaming prioritized category list
+        const techFirstCatKeys = [
+          "Consumer Electronics",
+          "Phones & Accessories",
+          "Computer & Office",
+          "Bags & Shoes",
+          "Jewelry & Watches",
+          "Men's Clothing",
+          "Toys, Kids & Babies",
+          "Sports & Outdoors",
+          "Home Improvement",
+          "Home, Garden & Furniture",
+          "Automobiles & Motorcycles",
+          "Health, Beauty & Hair",
+          "Pet Supplies",
+          "Women's Clothing"
+        ];
         const catsPerPage = 7;
-        const startIdx = ((pageNum - 1) * catsPerPage) % allCatKeys.length;
+        const startIdx = ((pageNum - 1) * catsPerPage) % techFirstCatKeys.length;
         const selectedCats = Array.from({ length: catsPerPage }, (_, i) =>
-          allCatKeys[(startIdx + i) % allCatKeys.length]
+          techFirstCatKeys[(startIdx + i) % techFirstCatKeys.length]
         );
-        const perCat = 8; // 8 products from each category = up to 56 items per page
+        const perCat = 8;
         const results = await Promise.allSettled(
           selectedCats.map((c) => fetchCategoryPage(c, Math.ceil(pageNum / 2) || 1, perCat))
         );
-        // Interleave round-robin so feed never runs out of variety
         const arrays = results
           .filter((r): r is PromiseFulfilledResult<{ products: CJProduct[]; hasMore: boolean }> => r.status === "fulfilled")
           .map((r) => r.value.products);
@@ -84,7 +98,7 @@ function Home() {
           }
         }
         newItems = interleaved;
-        more = true; // CJ has millions of products — infinite scroll never stops
+        more = true;
       } else {
         const res = await fetchCategoryPage(cat, pageNum, 50);
         newItems = res.products;
