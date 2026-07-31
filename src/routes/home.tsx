@@ -52,6 +52,24 @@ function Home() {
     setInitialLoading(true);
   }, [activeCat]);
 
+  const mainScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Restore scroll position when returning from product detail page
+  useEffect(() => {
+    const saved = sessionStorage.getItem("trends_home_scroll");
+    if (saved && mainScrollRef.current) {
+      setTimeout(() => {
+        if (mainScrollRef.current) mainScrollRef.current.scrollTop = Number(saved);
+      }, 60);
+    }
+  }, []);
+
+  const handleScroll = () => {
+    if (mainScrollRef.current) {
+      sessionStorage.setItem("trends_home_scroll", String(mainScrollRef.current.scrollTop));
+    }
+  };
+
   // Fetch a page of products
   const loadPage = useCallback(async (cat: string, pageNum: number) => {
     if (loading) return;
@@ -93,12 +111,13 @@ function Home() {
             if (i < arr.length) interleaved.push(arr[i]);
           }
         }
-        newItems = interleaved;
+        // Shuffle on app refresh for exciting variety
+        newItems = interleaved.sort(() => Math.random() - 0.5);
         more = true;
       } else {
         const res = await fetchCategoryPage(cat, pageNum, 50);
         newItems = res.products;
-        more = true; // Infinite pages from CJ API
+        more = true;
       }
 
       setProducts((prev) => (pageNum === 1 ? newItems : [...prev, ...newItems]));
@@ -177,7 +196,7 @@ function Home() {
   const recommended = products.slice(newArrivalsOffset + 8, newArrivalsOffset + 14);
   const trending = products;
 
-  // 9 Hero Banner Themes (auto-cycles every 4 seconds)
+  // 9 Hero Banner Themes (auto-cycles every 4 seconds with smooth cross-fade)
   const HERO_THEMES = [
     { title: "Pro Gaming\nHeadsets & Gear", subtitle: "Level Up Your Setup", tag: "Gaming Gear", img: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80", slug: "consumer-electronics" },
     { title: "Educational Toys\n& Kids Gaming", subtitle: "Play & Learn Collection", tag: "Toys & Hobbies", img: "https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?auto=format&fit=crop&w=800&q=80", slug: "toys-kids-babies" },
@@ -196,7 +215,7 @@ function Home() {
   useEffect(() => {
     const timer = setInterval(() => {
       setHeroIndex((prev) => (prev + 1) % HERO_THEMES.length);
-    }, 4000);
+    }, 4500);
     return () => clearInterval(timer);
   }, []);
 
@@ -212,7 +231,12 @@ function Home() {
         />
         <StatusBar />
 
-        <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+        <div
+          ref={mainScrollRef}
+          onScroll={handleScroll}
+          className="relative flex-1 overflow-y-auto overscroll-contain"
+          style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
+        >
           <div className="pb-32">
             <div className="px-6 pt-6 flex items-start justify-between">
               <div>
@@ -249,28 +273,43 @@ function Home() {
               </div>
             </div>
 
-            {/* Dynamic Hero Banner (Rotates through 9 Themes) */}
+            {/* Dynamic Hero Banner (Smooth Cross-Fade Carousel across 9 Themes) */}
             <div className="px-6 mt-6">
-              <div className="relative w-full overflow-hidden transition-all duration-500"
+              <div className="relative w-full overflow-hidden"
                 style={{ aspectRatio: "4 / 5", borderRadius: 24, background: "#F2EFE9", boxShadow: "0 24px 50px -24px rgba(17,17,17,0.20), 0 8px 20px -12px rgba(17,17,17,0.10), inset 0 0 0 1px rgba(17,17,17,0.03)" }}>
-                <img src={currentHero.img} alt={currentHero.title} className="w-full h-full object-cover transition-opacity duration-700" />
-                <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(10,10,10,0.65) 100%)" }} />
-                <div className="absolute left-5 top-5">
-                  <div className="inline-flex items-center gap-1.5 px-2.5" style={{ height: 26, borderRadius: 999, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5)" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: 999, background: "#0F62FE" }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#111", letterSpacing: 0.2, textTransform: "uppercase" }}>{currentHero.tag}</span>
-                  </div>
-                </div>
-                <div className="absolute left-5 right-5 bottom-5 flex items-end justify-between">
-                  <div>
-                    <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.85)", letterSpacing: 0.4, textTransform: "uppercase", fontWeight: 600 }}>{currentHero.subtitle}</div>
-                    <div className="mt-1" style={{ fontSize: 24, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.7, color: "#fff", whiteSpace: "pre-line" }}>{currentHero.title}</div>
-                  </div>
-                  <Link to="/category/$slug" params={{ slug: currentHero.slug }} className="inline-flex items-center gap-1.5 px-4"
-                    style={{ height: 38, borderRadius: 999, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", fontSize: 13.5, fontWeight: 600, color: "#111", letterSpacing: -0.2, boxShadow: "0 6px 16px -6px rgba(17,17,17,0.3)" }}>
-                    Explore <ArrowUpRight size={14} strokeWidth={2.4} />
-                  </Link>
-                </div>
+                {HERO_THEMES.map((hero, idx) => {
+                  const isActive = idx === heroIndex;
+                  return (
+                    <div
+                      key={hero.title}
+                      className="absolute inset-0 transition-all duration-700 ease-in-out pointer-events-none"
+                      style={{
+                        opacity: isActive ? 1 : 0,
+                        transform: isActive ? "scale(1)" : "scale(1.04)",
+                        zIndex: isActive ? 10 : 0
+                      }}
+                    >
+                      <img src={hero.img} alt={hero.title} className="w-full h-full object-cover" />
+                      <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(10,10,10,0.65) 100%)" }} />
+                      <div className="absolute left-5 top-5 pointer-events-auto">
+                        <div className="inline-flex items-center gap-1.5 px-2.5" style={{ height: 26, borderRadius: 999, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5)" }}>
+                          <span style={{ width: 6, height: 6, borderRadius: 999, background: "#0F62FE" }} />
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#111", letterSpacing: 0.2, textTransform: "uppercase" }}>{hero.tag}</span>
+                        </div>
+                      </div>
+                      <div className="absolute left-5 right-5 bottom-5 flex items-end justify-between pointer-events-auto">
+                        <div>
+                          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.85)", letterSpacing: 0.4, textTransform: "uppercase", fontWeight: 600 }}>{hero.subtitle}</div>
+                          <div className="mt-1" style={{ fontSize: 24, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.7, color: "#fff", whiteSpace: "pre-line" }}>{hero.title}</div>
+                        </div>
+                        <Link to="/category/$slug" params={{ slug: hero.slug }} className="inline-flex items-center gap-1.5 px-4"
+                          style={{ height: 38, borderRadius: 999, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", fontSize: 13.5, fontWeight: 600, color: "#111", letterSpacing: -0.2, boxShadow: "0 6px 16px -6px rgba(17,17,17,0.3)" }}>
+                          Explore <ArrowUpRight size={14} strokeWidth={2.4} />
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -288,7 +327,16 @@ function Home() {
                       <Link to="/product/$id" params={{ id: p.cjId }} key={p.id} className="shrink-0 overflow-hidden block"
                         style={{ width: 172, borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative" style={{ background: "#F7F7F5" }}>
-                          <img src={p.img} alt={p.name} loading="lazy" className="w-full object-cover" style={{ aspectRatio: "1/1" }} />
+                          <img
+                            src={p.img}
+                            alt={p.name}
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                            }}
+                            className="w-full object-cover"
+                            style={{ aspectRatio: "1/1" }}
+                          />
                           <button onClick={(e) => toggleWishlist(p.id, e)} aria-label="Wishlist"
                             className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
                             style={{ width: 30, height: 30, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}>
@@ -325,7 +373,16 @@ function Home() {
                       <Link to="/product/$id" params={{ id: p.cjId }} key={p.id} className="overflow-hidden block"
                         style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative">
-                          <img src={p.img} alt={p.name} loading="lazy" className="w-full object-cover" style={{ aspectRatio: "4/5" }} />
+                          <img
+                            src={p.img}
+                            alt={p.name}
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                            }}
+                            className="w-full object-cover"
+                            style={{ aspectRatio: "4/5" }}
+                          />
                           <button onClick={(e) => addToCart(p, e)} aria-label="Add to cart"
                             className="absolute bottom-2.5 right-2.5 flex items-center justify-center transition-all z-10"
                             style={{ width: 29, height: 29, borderRadius: 999, background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)", transition: "background-color 0.3s ease" }}>
@@ -388,7 +445,16 @@ function Home() {
                       <Link to="/product/$id" params={{ id: p.cjId }} key={p.id} className="overflow-hidden block group active:scale-[0.98] transition-all"
                         style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative overflow-hidden" style={{ background: "#F7F7F5" }}>
-                          <img src={p.img} alt={p.name} loading="lazy" className="w-full object-cover group-hover:scale-105 transition-transform duration-500" style={{ aspectRatio: "1/1" }} />
+                          <img
+                            src={p.img}
+                            alt={p.name}
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                            }}
+                            className="w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            style={{ aspectRatio: "1/1" }}
+                          />
                           <button onClick={(e) => toggleWishlist(p.id, e)} aria-label="Wishlist"
                             className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300"
                             style={{ width: 30, height: 30, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}>
