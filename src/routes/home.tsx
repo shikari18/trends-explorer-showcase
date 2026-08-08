@@ -8,7 +8,7 @@ import curated from "@/assets/home-curated.jpg";
 import bag from "@/assets/home-bag.jpg";
 import watch from "@/assets/home-watch.jpg";
 import tote from "@/assets/prod-tote.jpg";
-import { getCJProducts, getCJSearch, parseCJSafetyPrice, fetchCategoryPage, CJProduct } from "@/lib/cjApi";
+import { getCJProducts, getCJSearch, parseCJSafetyPrice, fetchCategoryPage, CJProduct, CATEGORIES } from "@/lib/cjApi";
 import { getVendorProfile, getVendorProducts, VendorProduct } from "@/lib/vendor";
 import { VendorAddProductModal } from "@/components/vendor/VendorAddProductModal";
 
