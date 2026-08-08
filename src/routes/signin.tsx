@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, ShieldCheck, Check } from "lucide-react";
-
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
+import { syncUserVendorAccount } from "@/lib/vendor";
 
 export const Route = createFileRoute("/signin")({
   component: SignIn,
@@ -55,6 +55,7 @@ function SignIn() {
                   avatar: userObj.picture,
                   id: userObj.sub,
                 };
+                syncUserVendorAccount(userData.email);
                 localStorage.setItem("user", JSON.stringify(userData));
                 import("sonner").then(({ toast }) => toast.success(`Welcome back, ${userData.name}!`));
                 navigate({ to: "/home" });
@@ -64,7 +65,6 @@ function SignIn() {
           },
         });
         (window as any).google.accounts.id.prompt((notification: any) => {
-          // If prompt was dismissed or blocked, trigger fallback login immediately
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
             const demoUser = {
               name: "Victor Dark",
@@ -72,6 +72,7 @@ function SignIn() {
               avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
               id: "google-user-1",
             };
+            syncUserVendorAccount(demoUser.email);
             localStorage.setItem("user", JSON.stringify(demoUser));
             import("sonner").then(({ toast }) => toast.success("Signed in with Google!"));
             navigate({ to: "/home" });
@@ -84,6 +85,7 @@ function SignIn() {
           avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
           id: "google-user-1",
         };
+        syncUserVendorAccount(demoUser.email);
         localStorage.setItem("user", JSON.stringify(demoUser));
         import("sonner").then(({ toast }) => toast.success("Signed in with Google!"));
         navigate({ to: "/home" });
@@ -95,6 +97,7 @@ function SignIn() {
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
         id: "google-user-1",
       };
+      syncUserVendorAccount(demoUser.email);
       localStorage.setItem("user", JSON.stringify(demoUser));
       import("sonner").then(({ toast }) => toast.success("Signed in with Google!"));
       navigate({ to: "/home" });

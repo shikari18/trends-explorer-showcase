@@ -204,12 +204,6 @@ function Home() {
     }
   };
 
-  // Dynamic daily rotation for 8 New Arrivals (changes every day)
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-  const newArrivalsOffset = (dayOfYear * 8) % Math.max(1, products.length - 8);
-  const newArrivals = products.slice(newArrivalsOffset, newArrivalsOffset + 8);
-  const recommendedOffset = (dayOfYear * 4 + 3) % Math.max(1, products.length - 4);
-  const recommended = products.slice(recommendedOffset, recommendedOffset + 4);
   const mappedVendorProducts = (Array.isArray(vendorProducts) ? vendorProducts : []).map((vp) => ({
     id: vp.id || `v-${Math.random()}`,
     cjId: vp.id || `v-${Math.random()}`,
@@ -223,6 +217,13 @@ function Home() {
     vendorName: vp.vendorName || "Vendor",
     vendorVerified: true,
   }));
+
+  // Dynamic daily rotation for 8 New Arrivals (changes every day)
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+  const newArrivalsOffset = (dayOfYear * 8) % Math.max(1, products.length - 8);
+  const newArrivals = [...mappedVendorProducts, ...products.slice(newArrivalsOffset, newArrivalsOffset + 8)];
+  const recommendedOffset = (dayOfYear * 4 + 3) % Math.max(1, products.length - 4);
+  const recommended = products.slice(recommendedOffset, recommendedOffset + 4);
 
   const trending = [...mappedVendorProducts, ...products];
 

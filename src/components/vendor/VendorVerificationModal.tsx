@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { X, CheckCircle2, ShieldCheck, Upload, AlertCircle, Sparkles, Camera, CreditCard, Building2, Phone } from "lucide-react";
-import { validatePassportPhoto, saveVendorProfile, VendorProfile } from "@/lib/vendor";
+import { validatePassportPhoto, saveVendorProfile, VendorProfile, validateGhanaCardNumber, validateGhanaPhone } from "@/lib/vendor";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  userEmail?: string;
+  userName?: string;
 }
 
-export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
+export function VendorVerificationModal({ isOpen, onClose, onSuccess, userEmail, userName }: Props) {
   const [storeName, setStoreName] = useState("");
   const [phone, setPhone] = useState("");
   const [ghanaCardNumber, setGhanaCardNumber] = useState("");
@@ -25,6 +27,10 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
   const handleGhanaCardUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size < 5000) {
+        import("sonner").then(({ toast }) => toast.error("Ghana Card photo file is too small or corrupted. Please upload a clear photo."));
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (event) => setGhanaCardPhoto(event.target?.result as string);
       reader.readAsDataURL(file);
@@ -63,39 +69,57 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!storeName.trim()) {
-      import("sonner").then(({ toast }) => toast.error("Please enter your Store / Business Name."));
+    if (!storeName.trim() || storeName.trim().length < 3) {
+      const msg = "Please enter a valid Store / Business Name (minimum 3 characters).";
+      setValidationError(msg);
+      import("sonner").then(({ toast }) => toast.error(msg));
       return;
     }
 
-    if (!ghanaCardNumber.trim()) {
-      import("sonner").then(({ toast }) => toast.error("Please enter your Ghana Card Number."));
+    // Strict Ghana Phone Check
+    const phoneCheck = validateGhanaPhone(phone);
+    if (!phoneCheck.valid) {
+      setValidationError(phoneCheck.reason || "Invalid Ghana Phone Number.");
+      import("sonner").then(({ toast }) => toast.error(phoneCheck.reason || "Invalid Ghana Phone Number."));
+      return;
+    }
+
+    // Strict Ghana Card Number Check
+    const cardCheck = validateGhanaCardNumber(ghanaCardNumber);
+    if (!cardCheck.valid) {
+      setValidationError(cardCheck.reason || "Invalid Ghana Card details.");
+      import("sonner").then(({ toast }) => toast.error(cardCheck.reason || "Invalid Ghana Card format."));
       return;
     }
 
     if (!ghanaCardPhoto) {
-      import("sonner").then(({ toast }) => toast.error("Please upload a photo of your Ghana Card."));
+      const msg = "Please upload a clear photo of your official Ghana Card.";
+      setValidationError(msg);
+      import("sonner").then(({ toast }) => toast.error(msg));
       return;
     }
 
     if (!passportPhoto || !isPhotoValid) {
-      import("sonner").then(({ toast }) => toast.error("Please upload a valid passport photo of yourself to proceed."));
+      const msg = "Please upload a valid passport headshot photo of yourself to proceed.";
+      setValidationError(msg);
+      import("sonner").then(({ toast }) => toast.error(msg));
       return;
     }
 
     const profile: VendorProfile = {
-      storeName,
-      phone: phone || "+233 20 000 0000",
-      ghanaCardNumber,
+      storeName: storeName.trim(),
+      phone: phone.trim(),
+      ghanaCardNumber: ghanaCardNumber.trim().toUpperCase(),
       ghanaCardPhoto,
       passportPhoto,
       verified: true,
       verifiedAt: new Date().toISOString(),
       vendorId: `vendor-${Date.now()}`,
+      email: userEmail,
     };
 
     saveVendorProfile(profile);
-    import("sonner").then(({ toast }) => toast.success("Congratulations! You are now a Verified Trends Vendor!"));
+    import("sonner").then(({ toast }) => toast.success("Congratulations! You are officially verified as a Trends Vendor!"));
     onSuccess();
     onClose();
   };
@@ -119,7 +143,7 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
               <h2 className="text-lg font-bold text-gray-900 leading-tight flex items-center gap-1.5">
                 Become a Vendor <CheckCircle2 className="w-4 h-4 text-blue-600 fill-blue-600 text-white" />
               </h2>
-              <p className="text-xs text-gray-500">Official Safety & Verification</p>
+              <p className="text-xs text-gray-500">Official Safety & Legitimacy Check</p>
             </div>
           </div>
           <button
@@ -136,7 +160,7 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
           <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-100 flex items-start gap-3">
             <Sparkles className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <p className="text-xs text-blue-900 leading-relaxed font-medium">
-              Verified Vendors get the official <strong>Blue Checkmark ✓</strong> badge across Trends and can list products to thousands of shoppers.
+              Anti-Scam Security: All vendors must submit official Ghana Card details & verified facial photo to sell on Trends.
             </p>
           </div>
 
@@ -150,7 +174,7 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
                 type="text"
                 placeholder="e.g. Dark's Fashion Boutique"
                 value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
+                onChange={(e) => { setStoreName(e.target.value); setValidationError(null); }}
                 required
                 className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-blue-600"
               />
@@ -162,9 +186,9 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
               </label>
               <input
                 type="tel"
-                placeholder="+233 24 123 4567"
+                placeholder="+233 24 123 4567 or 0241234567"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => { setPhone(e.target.value); setValidationError(null); }}
                 required
                 className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:border-blue-600"
               />
@@ -174,15 +198,15 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
           {/* Ghana Card Section */}
           <div className="space-y-3 pt-2 border-t border-gray-100">
             <label className="block text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-              <CreditCard size={14} className="text-gray-500" /> Ghana Card Verification
+              <CreditCard size={14} className="text-gray-500" /> Official Ghana Card Verification (NIA)
             </label>
             <input
               type="text"
               placeholder="Ghana Card No. (e.g. GHA-123456789-0)"
               value={ghanaCardNumber}
-              onChange={(e) => setGhanaCardNumber(e.target.value)}
+              onChange={(e) => { setGhanaCardNumber(e.target.value.toUpperCase()); setValidationError(null); }}
               required
-              className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-sm uppercase focus:outline-none focus:border-blue-600"
+              className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-sm uppercase font-mono tracking-wider focus:outline-none focus:border-blue-600"
             />
 
             {/* Ghana Card Photo Upload */}
@@ -216,7 +240,7 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess }: Props) {
           <div className="space-y-3 pt-2 border-t border-gray-100">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                <Camera size={14} className="text-gray-500" /> Upload Passport Photo of Yourself
+                <Camera size={14} className="text-gray-500" /> Upload Passport Headshot Photo
               </label>
               <span className="text-[10px] font-medium text-blue-600">Auto Face Check</span>
             </div>

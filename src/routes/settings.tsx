@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Moon, Bell, Languages, Globe, ShieldCheck, ScanFace, DollarSign, Sparkles, Database, Info, CheckCircle2, Store, PackagePlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Moon, Bell, Languages, Globe, ShieldCheck, ScanFace, DollarSign, Sparkles, Database, Info, CheckCircle2, Store, PackagePlus, Trash2, ShoppingBag, PlusCircle } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import { VendorVerificationModal } from "@/components/vendor/VendorVerificationModal";
 import { VendorAddProductModal } from "@/components/vendor/VendorAddProductModal";
-import { getVendorProfile, isVendorVerified, VendorProfile } from "@/lib/vendor";
+import { getVendorProfile, isVendorVerified, VendorProfile, getVendorProducts, deleteVendorProduct, VendorProduct } from "@/lib/vendor";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -21,6 +21,7 @@ function SettingsPage() {
   const [user, setUser] = useState<{ name?: string; email?: string; avatar?: string; isVendor?: boolean } | null>(null);
 
   const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
+  const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
 
@@ -30,7 +31,9 @@ function SettingsPage() {
       if (saved) {
         try { setUser(JSON.parse(saved)); } catch { setUser(null); }
       }
-      setVendorProfile(getVendorProfile());
+      const vp = getVendorProfile();
+      setVendorProfile(vp);
+      setVendorProducts(getVendorProducts());
     }
   };
 
@@ -49,6 +52,17 @@ function SettingsPage() {
       setShowAddProductModal(true);
     } else {
       setShowVerifyModal(true);
+    }
+  };
+
+  const handleDeleteProduct = (productId: string, title: string) => {
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm(`Are you sure you want to delete "${title}"?`);
+      if (confirmed) {
+        const updated = deleteVendorProduct(productId);
+        setVendorProducts(updated);
+        import("sonner").then(({ toast }) => toast.success(`"${title}" deleted successfully.`));
+      }
     }
   };
 
@@ -126,7 +140,7 @@ function SettingsPage() {
 
               <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/10">
                 <p className="text-xs text-white/80 max-w-[200px]">
-                  {vendorProfile?.verified ? "Upload products & manage listings" : "Requires Ghana Card & Facial Photo check for anti-scam security"}
+                  {vendorProfile?.verified ? "Upload products & manage store listings" : "Requires Ghana Card & Facial Photo check for anti-scam security"}
                 </p>
                 <button
                   onClick={handleVendorCardClick}
@@ -144,6 +158,76 @@ function SettingsPage() {
                 </button>
               </div>
             </div>
+
+            {/* My Store & Uploaded Products Section (Visible to Verified Vendors) */}
+            {vendorProfile?.verified && (
+              <div className="mx-5 mt-5">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4 text-blue-600" />
+                    <h2 className="text-sm font-bold text-gray-900 tracking-tight">My Store Products</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">
+                      {vendorProducts.length}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowAddProductModal(true)}
+                    className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700"
+                  >
+                    <PlusCircle size={14} /> Upload New
+                  </button>
+                </div>
+
+                {vendorProducts.length === 0 ? (
+                  <div className="p-6 rounded-2xl bg-white border border-gray-100 text-center shadow-sm">
+                    <Store className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-gray-800">No products uploaded yet</p>
+                    <p className="text-[11px] text-gray-500 mt-1 mb-3">Click below to upload your first product to Trends!</p>
+                    <button
+                      onClick={() => setShowAddProductModal(true)}
+                      className="px-4 py-2 rounded-full bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-blue-700"
+                    >
+                      Upload Product Now
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {vendorProducts.map((p) => (
+                      <div
+                        key={p.id}
+                        className="p-3.5 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={p.images[0] || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"}
+                            alt={p.title}
+                            className="w-14 h-14 object-cover rounded-xl border border-gray-100 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs font-bold text-gray-900 truncate">{p.title}</h4>
+                            <p className="text-xs font-bold text-blue-600 mt-0.5">₵{p.price.toLocaleString()}</p>
+                            <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+                              <span>📦 {p.category}</span>
+                              <span>•</span>
+                              <span>{new Date(p.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDeleteProduct(p.id, p.title)}
+                          title="Delete Product"
+                          className="p-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition-colors shrink-0 flex items-center justify-center"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <GroupLabel>Appearance</GroupLabel>
             <Group>
@@ -188,6 +272,8 @@ function SettingsPage() {
           isOpen={showVerifyModal}
           onClose={() => setShowVerifyModal(false)}
           onSuccess={refreshVendorState}
+          userEmail={user?.email}
+          userName={user?.name}
         />
         {user && vendorProfile && (
           <VendorAddProductModal
