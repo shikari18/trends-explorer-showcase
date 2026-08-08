@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, Camera, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
+import heroSummer from "@/assets/home-hero-summer.jpg";
 import curated from "@/assets/home-curated.jpg";
 import bag from "@/assets/home-bag.jpg";
 import watch from "@/assets/home-watch.jpg";
 import tote from "@/assets/prod-tote.jpg";
-import { getCJProducts, getCJSearch, parseCJSafetyPrice } from "@/lib/cjApi";
+import { getCJProducts, getCJSearch, parseCJSafetyPrice, fetchCategoryPage, CJProduct } from "@/lib/cjApi";
 import { getVendorProfile, getVendorProducts, VendorProduct } from "@/lib/vendor";
 import { VendorAddProductModal } from "@/components/vendor/VendorAddProductModal";
 
