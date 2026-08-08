@@ -598,33 +598,22 @@ export async function fetchProductDetail(
       } catch {}
     }
 
-    // Try local cache first (instant 0ms response)
     const cached = getProductById(idOrCjId)
       ?? getAllCachedProducts().find((p) => p.cjId === idOrCjId)
       ?? null;
 
-    if (cached) {
-      return {
-        ...cached,
-        images: [cached.img],
-        videoUrl: null,
-        description: `${cached.name} — Premium quality ${cached.brand} product available on Trends. Verified quality, elegant design, and fast delivery in Ghana.`,
-        category: cached.brand || "Trending",
-        variants: [],
-      };
-    }
+    const cjPid = cached?.cjId ?? idOrCjId;
 
-    // If not in local cache, try live API fetch with timeout
-    const cjPid = idOrCjId;
+    // Fetch live from CJ API with 3.5s timeout to get full productImageSet, variants, and videos
     let data: any = null;
     try {
-      data = await fetchWithTimeout(serverFetchProductDetail({ data: cjPid }), 2500);
+      data = await fetchWithTimeout(serverFetchProductDetail({ data: cjPid }), 3500);
     } catch (err) {
       console.warn("Server detail fetch failed:", err);
     }
 
     if (!data?.data && typeof window !== "undefined") {
-      data = await fetchWithTimeout(clientFetchProductDetailDirect(cjPid), 2500);
+      data = await fetchWithTimeout(clientFetchProductDetailDirect(cjPid), 3500);
     }
 
     const d = data?.data;
@@ -642,31 +631,73 @@ export async function fetchProductDetail(
         if (!val) return;
         if (Array.isArray(val)) { val.forEach(addImg); return; }
         if (typeof val === "object") { const url = val.imageUrl || val.url || val.img || val.src; if (url) addImg(url); return; }
-        if (typeof val === "string") { const clean = val.trim(); if (clean && !imageSet.includes(clean)) imageSet.push(clean); }
+        if (typeof val === "string") {
+          const clean = val.trim();
+          if (!clean) return;
+          if (clean.startsWith("[")) {
+            try {
+              const parsed = JSON.parse(clean);
+              if (Array.isArray(parsed)) { parsed.forEach(addImg); return; }
+            } catch {}
+          }
+          if (clean.includes(",")) {
+            clean.split(",").forEach(addImg);
+            return;
+          }
+          if (clean.startsWith("http") && !imageSet.includes(clean)) {
+            imageSet.push(clean);
+          }
+        }
       };
 
-      addImg(d.productImageSet || d.productImage || d.productImg || d.entryImage);
+      addImg(d.productImageSet);
+      addImg(d.productImage);
+      addImg(d.bigImage);
+      addImg(d.smallImage);
+      addImg(d.thumbnail);
+      addImg(d.imgList);
+      addImg(d.imageList);
+      addImg(d.productImages);
 
-      if (imageSet.length === 0 && d.productImage) addImg(d.productImage);
+      if (Array.isArray(d.variants)) {
+        d.variants.forEach((v: any) => {
+          if (v.variantImage) addImg(v.variantImage);
+          if (v.img) addImg(v.img);
+        });
+      }
+
+      if (imageSet.length === 0 && cached?.img) addImg(cached.img);
 
       const usdPrice = parseFloat(d.sellPrice || d.price || "10") || 10;
       const ghsPrice = Math.round(usdPrice * EXCHANGE_RATE * MARKUP);
 
       return {
-        id: `cj-${cjPid}`,
+        id: cached?.id || `cj-${cjPid}`,
         cjId: cjPid,
-        brand: fallbackBrand,
-        name: d.productNameEn || d.productName || "Product",
+        brand: cached?.brand || fallbackBrand,
+        name: d.productNameEn || d.productName || cached?.name || "Product",
         price: `₵${ghsPrice.toLocaleString()}`,
         rawPrice: ghsPrice,
-        img: imageSet[0] || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
-        images: imageSet.length > 0 ? imageSet : ["https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"],
-        rating: fallbackRating,
-        reviews: fallbackReviews,
+        img: imageSet[0] || cached?.img || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+        images: imageSet.length > 0 ? imageSet : [cached?.img || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"],
+        rating: cached?.rating || fallbackRating,
+        reviews: cached?.reviews || fallbackReviews,
         videoUrl: d.productVideo || null,
-        description: d.description || d.productDesc || "",
-        category: d.categoryName || "",
+        description: d.description || d.productDesc || cached?.name || "",
+        category: d.categoryName || cached?.brand || "",
         variants: d.variants || [],
+      };
+    }
+
+    // Instant fallback to cached product if live API is unavailable
+    if (cached) {
+      return {
+        ...cached,
+        images: [cached.img],
+        videoUrl: null,
+        description: `${cached.name} — Premium quality ${cached.brand} product available on Trends. Verified quality, elegant design, and fast delivery across Ghana.`,
+        category: cached.brand || "Trending",
+        variants: [],
       };
     }
   } catch (err) {
@@ -675,4 +706,3 @@ export async function fetchProductDetail(
 
   return null;
 }
-
