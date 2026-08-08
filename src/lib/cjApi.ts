@@ -44,12 +44,12 @@ export async function ensureClientCacheLoaded(): Promise<Record<string, CJProduc
 }
 
 function getAllCachedProducts(): CJProduct[] {
-  const cache = getCacheProducts();
+  const cache = (_cacheData && Object.keys(_cacheData).length > 0) ? _cacheData : getCacheProducts();
   return Object.values(cache).flat();
 }
 
 function getInterleavedProducts(): CJProduct[] {
-  const cache = getCacheProducts();
+  const cache = (_cacheData && Object.keys(_cacheData).length > 0) ? _cacheData : getCacheProducts();
   const categoryArrays = Object.values(cache).filter((arr) => arr.length > 0);
   if (categoryArrays.length === 0) return [];
   const maxLen = Math.max(...categoryArrays.map((arr) => arr.length));
@@ -551,169 +551,128 @@ async function clientFetchProductDetailDirect(cjPid: string): Promise<any> {
   }
 }
 
+function fetchWithTimeout<T>(promise: Promise<T>, ms = 2500): Promise<T | null> {
+  return Promise.race([
+    promise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
+}
+
 /**
- * Fetch full product detail live from CJ API.
- * Accepts EITHER a local cache ID (cj-women-s-clothing-1) OR a raw CJ PID (numeric/UUID).
- * This means clicking any product — whether from cache or live API — always works.
+ * Fetch full product detail live from CJ API with instant fallback.
  */
 export async function fetchProductDetail(
   idOrCjId: string
 ): Promise<CJProductDetail | null> {
-  // Check if this is a vendor product
-  if (typeof window !== "undefined") {
-    try {
-      const savedVp = localStorage.getItem("trends_vendor_products");
-      if (savedVp) {
-        const vList: any[] = JSON.parse(savedVp);
-        const vp = vList.find((item) => item.id === idOrCjId);
-        if (vp) {
-          return {
-            id: vp.id,
-            cjId: vp.id,
-            brand: vp.vendorName,
-            name: vp.title,
-            price: `₵${(vp.price * 15).toLocaleString()}`,
-            rawPrice: vp.price * 15,
-            img: vp.images[0] || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
-            images: vp.images.length > 0 ? vp.images : ["https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"],
-            rating: 5.0,
-            reviews: "1",
-            description: vp.description,
-            category: vp.category,
-            vendorName: vp.vendorName,
-            vendorVerified: true,
-            videoUrl: null,
-            variants: [],
-          };
-        }
-      }
-    } catch {}
-  }
-
-  // Try local cache first (for cached products with generated IDs)
-  const cached = getProductById(idOrCjId)
-    // Also try looking up by cjId (the raw CJ PID passed from live API products)
-    ?? ALL_CACHED_PRODUCTS.find((p) => p.cjId === idOrCjId)
-    ?? null;
-
-  // The actual CJ PID to query — either from cache or the raw ID itself
-  const cjPid = cached?.cjId ?? idOrCjId;
-
-  // Deterministic brand/rating from the cjId so they're always stable
-  const brandIdx = Math.abs(
-    cjPid.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-  ) % BRANDS.length;
-  const fallbackBrand = BRANDS[brandIdx];
-  const fallbackRating = parseFloat((4.0 + (brandIdx % 10) / 10).toFixed(1));
-  const fallbackReviews = (200 + (brandIdx * 31)).toLocaleString();
-
-  let data: any = null;
-
   try {
-    data = await serverFetchProductDetail({ data: cjPid });
-  } catch (err) {
-    console.warn("Server RPC detail fetch failed:", err);
-  }
+    await ensureClientCacheLoaded();
 
-  // If server function returned no data or failed during client navigation, try direct client fetch
-  if (!data?.data && typeof window !== "undefined") {
-    data = await clientFetchProductDetailDirect(cjPid);
-  }
+    // Check if this is a vendor product
+    if (typeof window !== "undefined") {
+      try {
+        const savedVp = localStorage.getItem("trends_vendor_products");
+        if (savedVp) {
+          const vList: any[] = JSON.parse(savedVp);
+          const vp = vList.find((item) => item.id === idOrCjId);
+          if (vp) {
+            return {
+              id: vp.id,
+              cjId: vp.id,
+              brand: vp.vendorName,
+              name: vp.title,
+              price: `₵${(vp.price * 15).toLocaleString()}`,
+              rawPrice: vp.price * 15,
+              img: (vp.images && vp.images[0]) || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+              images: (vp.images && vp.images.length > 0) ? vp.images : ["https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"],
+              rating: 5.0,
+              reviews: "1",
+              description: vp.description,
+              category: vp.category,
+              vendorName: vp.vendorName,
+              vendorVerified: true,
+              videoUrl: null,
+              variants: [],
+            };
+          }
+        }
+      } catch {}
+    }
 
-  const d = data?.data;
+    // Try local cache first (instant 0ms response)
+    const cached = getProductById(idOrCjId)
+      ?? getAllCachedProducts().find((p) => p.cjId === idOrCjId)
+      ?? null;
 
-  if (!d) {
     if (cached) {
-      return { ...cached, images: [cached.img], videoUrl: null, description: cached.name, category: "", variants: [] };
+      return {
+        ...cached,
+        images: [cached.img],
+        videoUrl: null,
+        description: `${cached.name} — Premium quality ${cached.brand} product available on Trends. Verified quality, elegant design, and fast delivery in Ghana.`,
+        category: cached.brand || "Trending",
+        variants: [],
+      };
     }
-    return null;
+
+    // If not in local cache, try live API fetch with timeout
+    const cjPid = idOrCjId;
+    let data: any = null;
+    try {
+      data = await fetchWithTimeout(serverFetchProductDetail({ data: cjPid }), 2500);
+    } catch (err) {
+      console.warn("Server detail fetch failed:", err);
+    }
+
+    if (!data?.data && typeof window !== "undefined") {
+      data = await fetchWithTimeout(clientFetchProductDetailDirect(cjPid), 2500);
+    }
+
+    const d = data?.data;
+
+    if (d) {
+      const brandIdx = Math.abs(
+        cjPid.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
+      ) % BRANDS.length;
+      const fallbackBrand = BRANDS[brandIdx];
+      const fallbackRating = parseFloat((4.0 + (brandIdx % 10) / 10).toFixed(1));
+      const fallbackReviews = (200 + (brandIdx * 31)).toLocaleString();
+
+      const imageSet: string[] = [];
+      const addImg = (val: any) => {
+        if (!val) return;
+        if (Array.isArray(val)) { val.forEach(addImg); return; }
+        if (typeof val === "object") { const url = val.imageUrl || val.url || val.img || val.src; if (url) addImg(url); return; }
+        if (typeof val === "string") { const clean = val.trim(); if (clean && !imageSet.includes(clean)) imageSet.push(clean); }
+      };
+
+      addImg(d.productImageSet || d.productImage || d.productImg || d.entryImage);
+
+      if (imageSet.length === 0 && d.productImage) addImg(d.productImage);
+
+      const usdPrice = parseFloat(d.sellPrice || d.price || "10") || 10;
+      const ghsPrice = Math.round(usdPrice * EXCHANGE_RATE * MARKUP);
+
+      return {
+        id: `cj-${cjPid}`,
+        cjId: cjPid,
+        brand: fallbackBrand,
+        name: d.productNameEn || d.productName || "Product",
+        price: `₵${ghsPrice.toLocaleString()}`,
+        rawPrice: ghsPrice,
+        img: imageSet[0] || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+        images: imageSet.length > 0 ? imageSet : ["https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"],
+        rating: fallbackRating,
+        reviews: fallbackReviews,
+        videoUrl: d.productVideo || null,
+        description: d.description || d.productDesc || "",
+        category: d.categoryName || "",
+        variants: d.variants || [],
+      };
+    }
+  } catch (err) {
+    console.error("fetchProductDetail exception:", err);
   }
 
-    const imageSet: string[] = [];
-
-    // Robust helper to extract clean image URLs from strings, JSON strings, arrays, or objects
-    const addImg = (val: any) => {
-      if (!val) return;
-
-      if (Array.isArray(val)) {
-        val.forEach(addImg);
-        return;
-      }
-
-      if (typeof val === "object") {
-        const url = val.imageUrl || val.url || val.img || val.src;
-        if (url) addImg(url);
-        return;
-      }
-
-      if (typeof val === "string") {
-        const clean = val.trim();
-        if (!clean) return;
-
-        // Handle JSON array strings like "[\"https://...\",\"https://...\"]"
-        if (clean.startsWith("[")) {
-          try {
-            const parsed = JSON.parse(clean);
-            if (Array.isArray(parsed)) {
-              parsed.forEach(addImg);
-              return;
-            }
-          } catch {}
-        }
-
-        // Handle comma-separated strings like "http://img1.jpg,http://img2.jpg"
-        if (clean.includes(",")) {
-          clean.split(",").forEach(addImg);
-          return;
-        }
-
-        // Valid image URL
-        if (clean.startsWith("http") && !imageSet.includes(clean)) {
-          imageSet.push(clean);
-        }
-      }
-    };
-
-    // Add images from all CJ detail response fields
-    addImg(d.productImageSet);
-    addImg(d.productImage);
-    addImg(d.bigImage);
-    addImg(d.smallImage);
-    addImg(d.thumbnail);
-    addImg(d.imgList);
-    addImg(d.imageList);
-    addImg(d.productImages);
-
-    // Add variant images (colors, sizes, styles)
-    if (Array.isArray(d.variants)) {
-      d.variants.forEach((v: any) => {
-        if (v.variantImage) addImg(v.variantImage);
-        if (v.img) addImg(v.img);
-      });
-    }
-
-    // Last resort: use cached image
-    if (imageSet.length === 0 && cached) imageSet.push(cached.img);
-
-
-    const usdPrice = parseFloat(d.sellPrice || d.productPrice || "10");
-    const ghsPrice = Math.round(usdPrice * EXCHANGE_RATE * MARKUP);
-
-    return {
-      id: idOrCjId,
-      cjId: d.pid || cjPid,
-      brand: cached?.brand ?? fallbackBrand,
-      name: d.productNameEn || cached?.name || "Product",
-      price: `₵${ghsPrice.toLocaleString()}`,
-      rawPrice: ghsPrice,
-      img: imageSet[0] || cached?.img || "",
-      rating: cached?.rating ?? fallbackRating,
-      reviews: cached?.reviews ?? fallbackReviews,
-      images: imageSet,
-      videoUrl: d.productVideo || null,
-      description: d.description || d.productNameEn || cached?.name || "",
-      category: d.categoryName || "",
-      variants: d.variants || [],
-    };
+  return null;
 }
 

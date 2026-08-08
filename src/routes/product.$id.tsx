@@ -39,19 +39,36 @@ function ProductDetail() {
   const [selectedSize, setSelectedSize] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
     setLoading(true);
     setActiveImg(0);
     setShowVideo(false);
-    fetchProductDetail(id).then((p) => {
-      setProduct(p);
-      setLoading(false);
-      
-      if (typeof window !== "undefined") {
-        const saved = localStorage.getItem("wishlist");
-        const list = saved ? JSON.parse(saved) : [];
-        setWishlist(list.includes(id));
+
+    async function loadProduct() {
+      try {
+        const p = await fetchProductDetail(id);
+        if (isMounted) {
+          setProduct(p);
+          if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("wishlist");
+            const list = saved ? JSON.parse(saved) : [];
+            setWishlist(list.includes(id));
+          }
+        }
+      } catch (err) {
+        console.error("Failed loading product detail:", err);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-    });
+    }
+
+    loadProduct();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   // Set default variants when product loads
