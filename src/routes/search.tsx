@@ -221,7 +221,7 @@ function SearchScreen() {
                           <Link
                             key={p.id}
                             to="/product/$id"
-                            params={{ id: p.cjId }}
+                            params={{ id: p.cjId || p.id }}
                             className="overflow-hidden block group active:scale-[0.98] transition-all"
                             style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}
                           >

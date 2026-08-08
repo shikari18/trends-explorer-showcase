@@ -382,7 +382,7 @@ function Home() {
                     const isLiked = wishlist.includes(p.id);
                     const isAdded = addedToCartIds.includes(p.id);
                     return (
-                      <Link to="/product/$id" params={{ id: p.cjId }} key={p.id} className="shrink-0 overflow-hidden block"
+                      <Link to="/product/$id" params={{ id: p.cjId || p.id }} key={p.id} className="shrink-0 overflow-hidden block"
                         style={{ width: 172, borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative" style={{ background: "#F7F7F5" }}>
                           <img
@@ -428,7 +428,7 @@ function Home() {
                   {recommended.map((p) => {
                     const isAdded = addedToCartIds.includes(p.id);
                     return (
-                      <Link to="/product/$id" params={{ id: p.cjId }} key={p.id} className="overflow-hidden block"
+                      <Link to="/product/$id" params={{ id: p.cjId || p.id }} key={p.id} className="overflow-hidden block"
                         style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative">
                           <img
