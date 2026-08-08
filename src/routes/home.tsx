@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Camera, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus } from "lucide-react";
+import { Search, Mic, Camera, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import heroSummer from "@/assets/home-hero-summer.jpg";
