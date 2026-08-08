@@ -249,7 +249,7 @@ function Home() {
           style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
         >
           <div className="pb-32">
-            <div className="px-6 pt-6 flex items-start justify-between">
+            <div className="px-6 pt-14 flex items-start justify-between">
               <div>
                 <div style={{ fontSize: 13.5, color: "#8A8A8A", letterSpacing: -0.1, fontWeight: 500 }}>
                   {currentUser ? "Welcome Back" : "Welcome to Trends"}

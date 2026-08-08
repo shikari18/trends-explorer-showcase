@@ -34,7 +34,7 @@ function Profile() {
         <StatusBar />
         <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-32">
-            <div className="px-6 pt-4 flex items-center justify-between">
+            <div className="px-6 pt-12 flex items-center justify-between">
               <h1 style={{ fontSize: 32, fontWeight: 700, color: "#111", letterSpacing: -0.9 }}>Profile</h1>
               {!user && (
                 <Link to="/signin" className="px-4 py-2 rounded-full bg-black text-white text-xs font-bold shadow-md">
