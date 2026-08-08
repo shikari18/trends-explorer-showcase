@@ -38,9 +38,16 @@ function SearchScreen() {
     "Leather Handbag",
     "Running Shoes",
   ]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Debounced live search
+  // Always scroll to top on mount
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Debounced live search with higher page size (up to 100 matching items)
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -54,14 +61,14 @@ function SearchScreen() {
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const { products } = await searchCJProducts(trimmed, 1, 20);
+        const { products } = await searchCJProducts(trimmed, 1, 100);
         setResults(products);
       } catch {
         setResults([]);
       } finally {
         setSearching(false);
       }
-    }, 400);
+    }, 300);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
@@ -113,7 +120,7 @@ function SearchScreen() {
           style={{ height: 260, background: "radial-gradient(80% 100% at 50% 0%, rgba(15,98,254,0.05) 0%, rgba(255,255,255,0) 70%)" }}
         />
         <StatusBar />
-        <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+        <div ref={scrollRef} className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
           <div className="pb-32">
             {/* Title */}
             <div className="px-6 pt-10 pb-1">
@@ -219,7 +226,16 @@ function SearchScreen() {
                             style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}
                           >
                             <div className="relative overflow-hidden" style={{ background: "#F7F7F5" }}>
-                              <img src={p.img} alt={p.name} loading="lazy" className="w-full object-cover group-hover:scale-105 transition-transform duration-500" style={{ aspectRatio: "1/1" }} />
+                              <img
+                                src={p.img}
+                                alt={p.name}
+                                loading="lazy"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                                }}
+                                className="w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                style={{ aspectRatio: "1/1" }}
+                              />
                               <button
                                 onClick={(e) => addToCart(p, e)}
                                 className="absolute bottom-2.5 right-2.5 flex items-center justify-center transition-all z-10"

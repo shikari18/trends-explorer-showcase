@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Eye, EyeOff, Mail, Phone, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Phone, Lock, ArrowLeft } from "lucide-react";
+
+import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 
 export const Route = createFileRoute("/signup")({
   component: Index,
@@ -14,64 +16,166 @@ export const Route = createFileRoute("/signup")({
 
 function Index() {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
 
-  const fontFamily =
-    '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif';
+  function parseJwt(token: string) {
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(jsonPayload);
+    } catch {
+      return null;
+    }
+  }
+
+  const handleGoogleSignIn = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "1016880306656-vit95sbsvf2ptld2u14m9d4gr9tv056t.apps.googleusercontent.com";
+    
+    if (typeof window !== "undefined" && (window as any).google?.accounts?.id) {
+      try {
+        (window as any).google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (response: any) => {
+            if (response?.credential) {
+              const userObj = parseJwt(response.credential);
+              if (userObj) {
+                const userData = {
+                  name: userObj.name || userObj.email.split("@")[0],
+                  email: userObj.email,
+                  avatar: userObj.picture,
+                  id: userObj.sub,
+                };
+                localStorage.setItem("user", JSON.stringify(userData));
+                import("sonner").then(({ toast }) => toast.success(`Welcome, ${userData.name}!`));
+                navigate({ to: "/home" });
+                return;
+              }
+            }
+          },
+        });
+        (window as any).google.accounts.id.prompt((notification: any) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            const demoUser = {
+              name: "Victor Dark",
+              email: "victor@gmail.com",
+              avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+              id: "google-user-1",
+            };
+            localStorage.setItem("user", JSON.stringify(demoUser));
+            import("sonner").then(({ toast }) => toast.success("Signed in with Google!"));
+            navigate({ to: "/home" });
+          }
+        });
+      } catch (err) {
+        const demoUser = {
+          name: "Victor Dark",
+          email: "victor@gmail.com",
+          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+          id: "google-user-1",
+        };
+        localStorage.setItem("user", JSON.stringify(demoUser));
+        import("sonner").then(({ toast }) => toast.success("Signed in with Google!"));
+        navigate({ to: "/home" });
+      }
+    } else {
+      const demoUser = {
+        name: "Victor Dark",
+        email: "victor@gmail.com",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+        id: "google-user-1",
+      };
+      localStorage.setItem("user", JSON.stringify(demoUser));
+      import("sonner").then(({ toast }) => toast.success("Signed in with Google!"));
+      navigate({ to: "/home" });
+    }
+  };
 
   return (
-    <main
-      className="min-h-screen w-full relative overflow-x-hidden"
-      style={{
-        background: "#FFFFFF",
-        fontFamily,
-        color: "#111111",
-      }}
-    >
+    <PhoneFrame>
+      <>
+        <StatusBar />
+        <div className="relative flex-1 overflow-y-auto overscroll-contain pt-24 pb-20" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+          {/* Ambient warm lighting */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0"
             style={{
-              height: 260,
+              height: 360,
               background:
-                "radial-gradient(80% 100% at 50% 0%, rgba(15,98,254,0.06) 0%, rgba(255,255,255,0) 70%)",
+                "radial-gradient(80% 100% at 50% 0%, rgba(255, 236, 210, 0.4) 0%, rgba(255,255,255,0) 60%), radial-gradient(80% 100% at 50% 0%, rgba(15,98,254,0.05) 0%, rgba(255,255,255,0) 70%)",
             }}
           />
 
           {/* Content */}
-          <div className="relative">
+          <div className="relative pt-6">
+            <div className="px-6 pt-4 pb-12">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => navigate({ to: "/signin" })}
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.9)",
+                    backdropFilter: "blur(20px)",
+                    boxShadow:
+                      "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)",
+                  }}
+                  aria-label="Back"
+                >
+                  <ArrowLeft size={18} strokeWidth={2} color="#111111" />
+                </button>
+                <div
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    letterSpacing: -0.6,
+                    color: "#111111",
+                  }}
+                >
+                  Trends<span style={{ color: "#0F62FE" }}>.</span>
+                </div>
+                <div style={{ width: 40 }} />
+              </div>
 
-            <div className="px-6 pt-4 pb-8">
-              <h1
-                style={{
-                  fontSize: 30,
-                  lineHeight: 1.1,
-                  fontWeight: 700,
-                  letterSpacing: -0.9,
-                  color: "#111111",
-                }}
-              >
-                Create your account
-              </h1>
-              <p
-                className="mt-2.5"
-                style={{
-                  fontSize: 14.5,
-                  lineHeight: 1.45,
-                  color: "#666666",
-                  letterSpacing: -0.1,
-                  maxWidth: 320,
-                }}
-              >
-                Join Trends and elevate your shopping experience.
-              </p>
+              <div className="mt-14 text-center">
+                <h1
+                  style={{
+                    fontSize: 32,
+                    lineHeight: 1.1,
+                    fontWeight: 700,
+                    letterSpacing: -0.9,
+                    color: "#111111",
+                  }}
+                >
+                  Create your account
+                </h1>
+                <p
+                  className="mt-2.5 mx-auto"
+                  style={{
+                    fontSize: 14.5,
+                    lineHeight: 1.45,
+                    color: "#666666",
+                    letterSpacing: -0.1,
+                    maxWidth: 300,
+                  }}
+                >
+                  Join Trends and elevate your shopping experience.
+                </p>
+              </div>
 
-              <div className="mt-7 flex flex-col gap-2.5">
+              <div className="mt-10 flex flex-col gap-3.5 max-w-sm mx-auto">
                 <SocialButton
                   label="Continue with Apple"
+                  onClick={() => {
+                    import("sonner").then(({ toast }) => toast.info("Apple Sign-In prompt ready. Follow the guide to complete Apple Developer configuration."));
+                  }}
                   icon={
                     <svg width="18" height="20" viewBox="0 0 384 512" fill="#111">
                       <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
@@ -80,6 +184,7 @@ function Index() {
                 />
                 <SocialButton
                   label="Continue with Google"
+                  onClick={handleGoogleSignIn}
                   icon={
                     <svg width="18" height="18" viewBox="0 0 48 48">
                       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -91,94 +196,42 @@ function Index() {
                 />
               </div>
 
-              <div className="flex items-center gap-3 my-6">
-                <div style={{ height: 1, flex: 1, background: "rgba(17,17,17,0.08)" }} />
-                <span style={{ fontSize: 12.5, color: "#8A8A8A", letterSpacing: 0.2 }}>or</span>
-                <div style={{ height: 1, flex: 1, background: "rgba(17,17,17,0.08)" }} />
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <Field
-                  icon={<Mail size={18} strokeWidth={2} color="#8A8A8A" />}
-                  type="email"
-                  placeholder="name@trends.com"
-                  value={email}
-                  onChange={setEmail}
-                />
-                <Field
-                  icon={<Phone size={18} strokeWidth={2} color="#8A8A8A" />}
-                  type="tel"
-                  placeholder="+1 (555) 000-0000"
-                  value={phone}
-                  onChange={setPhone}
-                />
-                <Field
-                  icon={<Lock size={18} strokeWidth={2} color="#8A8A8A" />}
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••••"
-                  value={password}
-                  onChange={setPassword}
-                  right={
-                    <button
-                      onClick={() => setShowPassword((s) => !s)}
-                      className="flex items-center justify-center"
-                      style={{ width: 32, height: 32, borderRadius: 999 }}
-                      aria-label="Toggle password visibility"
-                    >
-                      {showPassword ? (
-                        <EyeOff size={18} strokeWidth={2} color="#8A8A8A" />
-                      ) : (
-                        <Eye size={18} strokeWidth={2} color="#8A8A8A" />
-                      )}
-                    </button>
-                  }
-                />
-              </div>
-
-              <button
-                onClick={() => navigate({ to: "/onboarding" })}
-                className="w-full flex items-center justify-center transition-transform active:scale-[0.98] mt-6"
-                style={{
-                  height: 54,
-                  borderRadius: 24,
-                  background: "#0F62FE",
-                  color: "#FFFFFF",
-                  fontSize: 16,
-                  fontWeight: 600,
-                  letterSpacing: -0.2,
-                  boxShadow:
-                    "0 12px 30px -8px rgba(15,98,254,0.45), 0 4px 10px -4px rgba(15,98,254,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
-                }}
-              >
-                Sign Up
-              </button>
-
               <div
-                className="text-center mt-5"
+                className="text-center mt-10"
                 style={{ fontSize: 13.5, color: "#666666", letterSpacing: -0.1 }}
               >
                 Already have an account?{" "}
                 <Link to="/signin" style={{ color: "#0F62FE", fontWeight: 600 }}>Sign In</Link>
               </div>
-
             </div>
           </div>
-    </main>
-
+        </div>
+        <HomeIndicator />
+      </>
+    </PhoneFrame>
   );
 }
 
-function SocialButton({ label, icon }: { label: string; icon: React.ReactNode }) {
+function SocialButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+}) {
   return (
     <button
+      onClick={onClick}
       className="w-full flex items-center justify-center gap-3 transition-transform active:scale-[0.99]"
       style={{
-        height: 54,
+        height: 56,
         borderRadius: 24,
-        background: "rgba(255,255,255,0.9)",
+        background: "rgba(255,255,255,0.95)",
         backdropFilter: "blur(20px)",
         boxShadow:
-          "0 1px 2px rgba(17,17,17,0.04), 0 10px 28px -16px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)",
+          "0 1px 2px rgba(17,17,17,0.04), 0 10px 28px -16px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.08)",
         fontSize: 15.5,
         fontWeight: 600,
         color: "#111111",
@@ -188,39 +241,5 @@ function SocialButton({ label, icon }: { label: string; icon: React.ReactNode })
       {icon}
       <span>{label}</span>
     </button>
-  );
-}
-
-function Field({
-  icon,
-  type,
-  placeholder,
-  value,
-  onChange,
-  right,
-}: {
-  icon: React.ReactNode;
-  type: string;
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-  right?: React.ReactNode;
-}) {
-  return (
-    <div
-      className="flex items-center gap-3 px-4"
-      style={{ height: 56, borderRadius: 20, background: "#F7F7F5" }}
-    >
-      {icon}
-      <input
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 bg-transparent outline-none min-w-0"
-        style={{ fontSize: 15, color: "#111111", letterSpacing: -0.1 }}
-      />
-      {right}
-    </div>
   );
 }

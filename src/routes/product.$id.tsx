@@ -304,9 +304,14 @@ function ProductDetail() {
               <div style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: -0.3, color: "#111" }}>
                 Product Detail
               </div>
-              <button aria-label="Share" className="flex items-center justify-center" style={circleBtnStyle}>
-                <Share2 size={17} color="#111" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => navigate({ to: "/wishlist" })} aria-label="Go to wishlist" className="flex items-center justify-center" style={circleBtnStyle}>
+                  <Heart size={17} color="#FF3B30" fill="#FF3B30" />
+                </button>
+                <button aria-label="Share" className="flex items-center justify-center" style={circleBtnStyle}>
+                  <Share2 size={17} color="#111" />
+                </button>
+              </div>
             </div>
 
             {/* Main media viewer — swipeable (native passive touch events) */}

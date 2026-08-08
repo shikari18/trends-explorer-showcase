@@ -92,6 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Trends — Premium shopping, elevated" },
       { property: "og:description", content: "Premium shopping, elevated." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://trend-4up7.onrender.com" },
       { property: "og:image", content: "/image.png" },
       { property: "og:image:width", content: "1254" },
       { property: "og:image:height", content: "1254" },
@@ -129,6 +130,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
         <script src="https://js.paystack.co/v1/inline.js"></script>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body>
         {children}

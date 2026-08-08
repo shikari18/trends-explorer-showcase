@@ -361,8 +361,12 @@ function filterRelevantProducts(products: CJProduct[], query: string): CJProduct
   const clean = query.toLowerCase().trim();
   if (!clean) return products;
 
-  const words = clean.split(/\s+/).filter((w) => w.length >= 3);
+  const words = clean.split(/\s+/).filter((w) => w.length >= 2);
   if (words.length === 0) return products;
+
+  // Gender specificity checks using word boundaries
+  const isMenQuery = /\b(men|man|mens|men's|boy|male)\b/i.test(clean);
+  const isWomenQuery = /\b(women|woman|womens|women's|girl|female|lady|ladies)\b/i.test(clean);
 
   const primaryWord = words.find((w) => TERM_SYNONYMS[w]);
   const synonyms = primaryWord ? TERM_SYNONYMS[primaryWord] : words;
@@ -370,14 +374,34 @@ function filterRelevantProducts(products: CJProduct[], query: string): CJProduct
 
   return products.filter((p) => {
     const nameLower = p.name.toLowerCase();
+    const catLower = (p.category || "").toLowerCase();
+
+    // Gender exclusion checks
+    if (isMenQuery && !isWomenQuery) {
+      if (/\b(women|woman|womens|women's|girl|female|lady|ladies)\b/i.test(nameLower) || catLower.includes("women")) {
+        return false;
+      }
+    } else if (isWomenQuery && !isMenQuery) {
+      if (/\b(men|man|mens|men's|boy|male)\b/i.test(nameLower) && !/\b(women|woman|womens|women's)\b/i.test(nameLower)) {
+        return false;
+      }
+    }
 
     // Must NOT contain exclusion terms unless explicitly searched for
     if (exclusions.some((ex) => nameLower.includes(ex) && !clean.includes(ex))) {
       return false;
     }
 
-    // Must match at least one synonym or search word
-    return synonyms.some((syn) => nameLower.includes(syn));
+    // Must match all key query terms (e.g. "men" AND "top")
+    return words.every((w) => {
+      if (w === "men" || w === "mens" || w === "men's") {
+        return /\b(men|man|mens|men's|male)\b/i.test(nameLower) || catLower.includes("men");
+      }
+      if (w === "women" || w === "womens" || w === "women's") {
+        return /\b(women|woman|womens|women's|female)\b/i.test(nameLower) || catLower.includes("women");
+      }
+      return nameLower.includes(w) || synonyms.some((syn) => nameLower.includes(syn));
+    });
   });
 }
 
@@ -448,31 +472,21 @@ export async function searchCJProducts(
     return true;
   });
 
-  deduped = filterRelevantProducts(deduped, cleanQuery);
+  // Search local cached catalog (16,000+ items)
+  const localMatches = filterRelevantProducts(ALL_CACHED_PRODUCTS, cleanQuery);
 
-  if (deduped.length > 0) {
-    return { products: deduped, hasMore: true };
+  // Combine live API results + local catalog matches, maintaining high relevance
+  const combinedMap = new Map<string, CJProduct>();
+  for (const p of [...deduped, ...localMatches]) {
+    if (!combinedMap.has(p.id) && !combinedMap.has(p.cjId)) {
+      combinedMap.set(p.cjId || p.id, p);
+    }
   }
 
-  // Fallback to cache pool
-  const categoryPool = detectedCategory
-    ? ((cjCache.products || {}) as Record<string, CJProduct[]>)[detectedCategory] || ALL_CACHED_PRODUCTS
-    : ALL_CACHED_PRODUCTS;
-
-  let matched = filterRelevantProducts(categoryPool, cleanQuery);
-
-  if (matched.length === 0) {
-    matched = filterRelevantProducts(ALL_CACHED_PRODUCTS, cleanQuery);
-  }
-
-  // If filtered count is under 20 for a detected category, return full category pool (200+ items)
-  if (matched.length < 20 && categoryPool.length > 0) {
-    matched = categoryPool;
-  }
-
+  const finalResults = Array.from(combinedMap.values());
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
-  return { products: matched.slice(start, end), hasMore: true };
+  return { products: finalResults.slice(start, end), hasMore: end < finalResults.length };
 }
 
 

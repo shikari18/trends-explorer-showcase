@@ -5,15 +5,26 @@ import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFr
 import { BottomNav } from "@/components/phone/BottomNav";
 
 export const Route = createFileRoute("/settings")({
-  component: Settings,
+  component: SettingsPage,
   head: () => ({ meta: [{ title: "Trends — Settings" }] }),
 });
 
-function Settings() {
+function SettingsPage() {
   const [dark, setDark] = useState(false);
   const [push, setPush] = useState(true);
   const [face, setFace] = useState(true);
   const [ai, setAi] = useState(true);
+  const [user, setUser] = useState<{ name?: string; email?: string; avatar?: string } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("user");
+      if (saved) {
+        try { setUser(JSON.parse(saved)); } catch { setUser(null); }
+      }
+    }
+  }, []);
+
   return (
     <PhoneFrame>
       <>
@@ -34,10 +45,20 @@ function Settings() {
             <div className="mx-5 mt-5 p-4 flex items-center gap-4"
               style={{ borderRadius: 22, background: "#fff",
                 boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-              <div className="flex items-center justify-center" style={{ width: 52, height: 52, borderRadius: 999, background: "linear-gradient(135deg, #0F62FE, #61B0FF)", color: "#fff", fontSize: 20, fontWeight: 700 }}>V</div>
+              <div className="flex items-center justify-center shrink-0 overflow-hidden" style={{ width: 52, height: 52, borderRadius: 999, background: "linear-gradient(135deg, #0F62FE, #61B0FF)", color: "#fff", fontSize: 20, fontWeight: 700 }}>
+                {user?.avatar ? (
+                  <img src={user.avatar} alt={user.name || "User"} className="w-full h-full object-cover" />
+                ) : (
+                  (user?.name?.[0] || user?.email?.[0] || "G").toUpperCase()
+                )}
+              </div>
               <div className="flex-1">
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>Victor Mensah</div>
-                <div style={{ fontSize: 12, color: "#666" }}>Premium Member</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>
+                  {user?.name || (user?.email ? user.email.split("@")[0] : "Guest User")}
+                </div>
+                <div style={{ fontSize: 12, color: "#666" }}>
+                  {user ? (user.email || "Member") : "Not signed in"}
+                </div>
               </div>
               <ChevronRight size={16} color="#8A8A8A" />
             </div>
