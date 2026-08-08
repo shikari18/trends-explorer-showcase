@@ -129,9 +129,7 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        <script src="https://js.paystack.co/v1/inline.js"></script>
         <script src="https://accounts.google.com/gsi/client" async defer></script>
-        <script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleauth/1/en_US/appleid.auth.js" async defer></script>
       </head>
       <body>
         {children}
