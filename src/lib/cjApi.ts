@@ -3,10 +3,64 @@
 // proxy limitations, and keep API key tokens secure.
 
 import { createServerFn } from "@tanstack/react-start";
-import cjCache from "./cjCache.json";
 
 export const EXCHANGE_RATE = 15.0;
 export const MARKUP = 1.1;
+
+let _cacheData: Record<string, CJProduct[]> | null = null;
+
+function getCacheProducts(): Record<string, CJProduct[]> {
+  if (_cacheData) return _cacheData;
+  if (typeof window === "undefined") {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const filePath = path.join(process.cwd(), "public", "cjCache.json");
+      if (fs.existsSync(filePath)) {
+        const json = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+        _cacheData = (json.products || {}) as Record<string, CJProduct[]>;
+        return _cacheData;
+      }
+    } catch (e) {
+      console.error("Error reading public/cjCache.json on server:", e);
+    }
+  }
+  return {};
+}
+
+export async function ensureClientCacheLoaded(): Promise<Record<string, CJProduct[]>> {
+  if (_cacheData) return _cacheData;
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/cjCache.json");
+      const json = await res.json();
+      _cacheData = (json.products || {}) as Record<string, CJProduct[]>;
+      return _cacheData;
+    } catch (e) {
+      console.error("Failed to fetch /cjCache.json on client:", e);
+    }
+  }
+  return getCacheProducts();
+}
+
+function getAllCachedProducts(): CJProduct[] {
+  const cache = getCacheProducts();
+  return Object.values(cache).flat();
+}
+
+function getInterleavedProducts(): CJProduct[] {
+  const cache = getCacheProducts();
+  const categoryArrays = Object.values(cache).filter((arr) => arr.length > 0);
+  if (categoryArrays.length === 0) return [];
+  const maxLen = Math.max(...categoryArrays.map((arr) => arr.length));
+  const result: CJProduct[] = [];
+  for (let i = 0; i < maxLen; i++) {
+    for (const arr of categoryArrays) {
+      if (i < arr.length) result.push(arr[i]);
+    }
+  }
+  return result;
+}
 
 export const CATEGORY_MAP: Record<string, string> = {
   "Women's Clothing": "2FE8A083-5E7B-4179-896D-561EA116F730",
@@ -71,27 +125,6 @@ const BRANDS = [
   "Zara","H&M","Uniqlo","ASOS","Levi's","Tommy Hilfiger","Calvin Klein","Ralph Lauren",
   "Armani","Valentino","Givenchy","Bottega Veneta","Celine","Off-White",
 ];
-
-// Flat array — all products from all categories (for search/lookups)
-const ALL_CACHED_PRODUCTS: CJProduct[] = Object.values(
-  (cjCache.products || {}) as Record<string, CJProduct[]>
-).flat();
-
-// Interleaved array — round-robin mix of all categories for the Random home feed.
-const INTERLEAVED_PRODUCTS: CJProduct[] = (() => {
-  const categoryArrays = Object.values(
-    (cjCache.products || {}) as Record<string, CJProduct[]>
-  ).filter(arr => arr.length > 0);
-  if (categoryArrays.length === 0) return [];
-  const maxLen = Math.max(...categoryArrays.map(arr => arr.length));
-  const result: CJProduct[] = [];
-  for (let i = 0; i < maxLen; i++) {
-    for (const arr of categoryArrays) {
-      if (i < arr.length) result.push(arr[i]);
-    }
-  }
-  return result;
-})();
 
 // Keyword-to-category mapping for accurate search routing
 const KEYWORD_CATEGORY_MAP: Array<[string[], string]> = [
@@ -314,9 +347,10 @@ export async function fetchCategoryPage(
   }
 
   // Fallback to cache loop if live API is unreachable
+  const cache = getCacheProducts();
   const rawList = category === "Random"
-    ? INTERLEAVED_PRODUCTS
-    : ((cjCache.products || {}) as Record<string, CJProduct[]>)[category] || ALL_CACHED_PRODUCTS;
+    ? getInterleavedProducts()
+    : ((cache || {}) as Record<string, CJProduct[]>)[category] || getAllCachedProducts();
     
   const totalItems = rawList.length || 1;
   const start = ((page - 1) * pageSize) % totalItems;
@@ -414,11 +448,12 @@ export async function searchCJProducts(
   page = 1,
   pageSize = 40
 ): Promise<{ products: CJProduct[]; hasMore: boolean }> {
+  const allCached = getAllCachedProducts();
   const cleanQuery = query.toLowerCase().trim();
   if (!cleanQuery) {
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
-    return { products: ALL_CACHED_PRODUCTS.slice(start, end), hasMore: end < ALL_CACHED_PRODUCTS.length };
+    return { products: allCached.slice(start, end), hasMore: end < allCached.length };
   }
 
   const detectedCategory = detectCategoryFromQuery(cleanQuery);
@@ -473,7 +508,7 @@ export async function searchCJProducts(
   });
 
   // Search local cached catalog (16,000+ items)
-  const localMatches = filterRelevantProducts(ALL_CACHED_PRODUCTS, cleanQuery);
+  const localMatches = filterRelevantProducts(allCached, cleanQuery);
 
   // Combine live API results + local catalog matches, maintaining high relevance
   const combinedMap = new Map<string, CJProduct>();
@@ -492,7 +527,7 @@ export async function searchCJProducts(
 
 // Find a product locally by ID
 export function getProductById(id: string): CJProduct | null {
-  return ALL_CACHED_PRODUCTS.find((p) => p.id === id) || null;
+  return getAllCachedProducts().find((p) => p.id === id) || null;
 }
 
 async function clientFetchProductDetailDirect(cjPid: string): Promise<any> {
