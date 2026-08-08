@@ -110,48 +110,82 @@ function SignIn() {
           redirectURI: window.location.origin,
           usePopup: true,
         });
-        (window as any).AppleID.auth.signIn().then((res: any) => {
-          const appleUser = {
-            name: res.user?.name ? `${res.user.name.firstName} ${res.user.name.lastName}` : "Apple User",
-            email: res.user?.email || "user@apple.com",
-            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-            id: "apple-user-1",
-          };
-          localStorage.setItem("user", JSON.stringify(appleUser));
-          import("sonner").then(({ toast }) => toast.success(`Welcome, ${appleUser.name}!`));
-          navigate({ to: "/home" });
-        }).catch(() => {
-          const appleUser = {
-            name: "Apple User",
-            email: "shopper@icloud.com",
-            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-            id: "apple-user-demo",
-          };
-          localStorage.setItem("user", JSON.stringify(appleUser));
-          import("sonner").then(({ toast }) => toast.success("Signed in with Apple!"));
-          navigate({ to: "/home" });
-        });
+        (window as any).AppleID.auth
+          .signIn()
+          .then((res: any) => {
+            let name = "Apple User";
+            let email = "user@icloud.com";
+            let id = "apple-id-" + Date.now();
+
+            if (res.user) {
+              if (res.user.name) {
+                name = `${res.user.name.firstName || ""} ${res.user.name.lastName || ""}`.trim() || name;
+              }
+              if (res.user.email) email = res.user.email;
+            } else if (res.authorization?.id_token) {
+              const jwtObj = parseJwt(res.authorization.id_token);
+              if (jwtObj) {
+                if (jwtObj.email) email = jwtObj.email;
+                if (jwtObj.sub) id = jwtObj.sub;
+                name = email.split("@")[0];
+              }
+            }
+
+            const userData = {
+              name,
+              email,
+              avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+              id,
+            };
+            localStorage.setItem("user", JSON.stringify(userData));
+            import("sonner").then(({ toast }) => toast.success(`Welcome back, ${userData.name}!`));
+            navigate({ to: "/home" });
+          })
+          .catch((err: any) => {
+            if (err?.error === "popup_closed_by_user") {
+              import("sonner").then(({ toast }) => toast.error("Apple Sign-In cancelled."));
+            } else {
+              const userEmail = prompt("Enter your Apple ID email address to sign in:", "victor@icloud.com");
+              if (userEmail) {
+                const userData = {
+                  name: userEmail.split("@")[0],
+                  email: userEmail,
+                  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+                  id: "apple-" + Date.now(),
+                };
+                localStorage.setItem("user", JSON.stringify(userData));
+                import("sonner").then(({ toast }) => toast.success(`Welcome, ${userData.name}!`));
+                navigate({ to: "/home" });
+              }
+            }
+          });
       } catch {
-        const appleUser = {
-          name: "Apple User",
-          email: "shopper@icloud.com",
-          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-          id: "apple-user-demo",
-        };
-        localStorage.setItem("user", JSON.stringify(appleUser));
-        import("sonner").then(({ toast }) => toast.success("Signed in with Apple!"));
-        navigate({ to: "/home" });
+        const userEmail = prompt("Enter your Apple ID email address to sign in:", "victor@icloud.com");
+        if (userEmail) {
+          const userData = {
+            name: userEmail.split("@")[0],
+            email: userEmail,
+            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+            id: "apple-" + Date.now(),
+          };
+          localStorage.setItem("user", JSON.stringify(userData));
+          import("sonner").then(({ toast }) => toast.success(`Welcome, ${userData.name}!`));
+          navigate({ to: "/home" });
+        }
       }
     } else {
-      const appleUser = {
-        name: "Apple User",
-        email: "shopper@icloud.com",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-        id: "apple-user-demo",
-      };
-      localStorage.setItem("user", JSON.stringify(appleUser));
-      import("sonner").then(({ toast }) => toast.success("Signed in with Apple!"));
-      navigate({ to: "/home" });
+      const userEmail = prompt("Enter your Apple ID email address to sign in:", "victor@icloud.com");
+      if (userEmail) {
+        const userData = {
+          name: userEmail.split("@")[0],
+          email: userEmail,
+          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+          id: "apple-" + Date.now(),
+        };
+        localStorage.setItem("user", JSON.stringify(userData));
+        import("sonner").then(({ toast }) => toast.success(`Welcome, ${userData.name}!`));
+        navigate({ to: "/home" });
+      }
     }
   };
 

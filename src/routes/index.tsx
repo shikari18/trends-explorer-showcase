@@ -34,7 +34,14 @@ function Splash() {
       setTimeout(() => setVis(true), 50);
     });
     const t1 = setTimeout(() => setOut(true), 4000);
-    const t2 = setTimeout(() => navigate({ to: "/onboarding" }), 4800);
+    const t2 = setTimeout(() => {
+      const savedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+      if (savedUser) {
+        navigate({ to: "/home" });
+      } else {
+        navigate({ to: "/onboarding" });
+      }
+    }, 4800);
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(t1);

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight } from "lucide-react";
 import bagImage from "@/assets/onboarding-bag.jpg";
 import curatedImage from "@/assets/home-curated.jpg";
@@ -39,6 +39,13 @@ const SLIDES = [
 function Onboarding() {
   const navigate = useNavigate();
   const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && localStorage.getItem("user")) {
+      navigate({ to: "/home" });
+    }
+  }, [navigate]);
+
   const fontFamily =
     '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif';
 
