@@ -36,11 +36,22 @@ function Home() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Load wishlist
+  const [currentUser, setCurrentUser] = useState<{ name?: string; email?: string; avatar?: string } | null>(null);
+
+  // Load wishlist & current user
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("wishlist");
-      setWishlist(saved ? JSON.parse(saved) : []);
+      const savedWishlist = localStorage.getItem("wishlist");
+      setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
+
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        try {
+          setCurrentUser(JSON.parse(savedUser));
+        } catch {
+          setCurrentUser(null);
+        }
+      }
     }
   }, []);
 
@@ -240,9 +251,11 @@ function Home() {
           <div className="pb-32">
             <div className="px-6 pt-6 flex items-start justify-between">
               <div>
-                <div style={{ fontSize: 13.5, color: "#8A8A8A", letterSpacing: -0.1, fontWeight: 500 }}>Good Morning</div>
+                <div style={{ fontSize: 13.5, color: "#8A8A8A", letterSpacing: -0.1, fontWeight: 500 }}>
+                  {currentUser ? "Welcome Back" : "Welcome to Trends"}
+                </div>
                 <h1 className="mt-1" style={{ fontSize: 28, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.8, color: "#111111" }}>
-                  Victor <span style={{ fontWeight: 400 }}>👋</span>
+                  {currentUser ? (currentUser.name || currentUser.email?.split("@")[0] || "Shopper") : "Discover"} <span style={{ fontWeight: 400 }}>👋</span>
                 </h1>
               </div>
               <div className="flex items-center gap-2">
@@ -250,10 +263,21 @@ function Home() {
                   style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)" }}>
                   <Heart size={20} strokeWidth={2.2} color="#FF3B30" fill="#FF3B30" />
                 </Link>
-                <Link to="/profile" aria-label="Go to profile" className="flex items-center justify-center shrink-0"
-                  style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)", fontSize: 15, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>
-                  V
-                </Link>
+                {currentUser ? (
+                  <Link to="/profile" aria-label="Go to profile" className="flex items-center justify-center shrink-0 overflow-hidden"
+                    style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)", fontSize: 15, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>
+                    {currentUser.avatar ? (
+                      <img src={currentUser.avatar} alt={currentUser.name || "User"} className="w-full h-full object-cover" />
+                    ) : (
+                      (currentUser.name?.[0] || currentUser.email?.[0] || "U").toUpperCase()
+                    )}
+                  </Link>
+                ) : (
+                  <Link to="/signin" aria-label="Sign in" className="inline-flex items-center justify-center px-4 shrink-0"
+                    style={{ height: 42, borderRadius: 999, background: "#111111", color: "#FFFFFF", fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, boxShadow: "0 8px 20px -8px rgba(17,17,17,0.3)" }}>
+                    Sign In
+                  </Link>
+                )}
               </div>
             </div>
             <p className="px-6 mt-1.5" style={{ fontSize: 14.5, color: "#666666", letterSpacing: -0.1 }}>
