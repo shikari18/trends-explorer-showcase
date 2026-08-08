@@ -101,94 +101,6 @@ function SignIn() {
     }
   };
 
-  const handleAppleSignIn = () => {
-    if (typeof window !== "undefined" && (window as any).AppleID) {
-      try {
-        (window as any).AppleID.auth.init({
-          clientId: "com.trends.app.web",
-          scope: "name email",
-          redirectURI: window.location.origin,
-          usePopup: true,
-        });
-        (window as any).AppleID.auth
-          .signIn()
-          .then((res: any) => {
-            let name = "Apple User";
-            let email = "user@icloud.com";
-            let id = "apple-id-" + Date.now();
-
-            if (res.user) {
-              if (res.user.name) {
-                name = `${res.user.name.firstName || ""} ${res.user.name.lastName || ""}`.trim() || name;
-              }
-              if (res.user.email) email = res.user.email;
-            } else if (res.authorization?.id_token) {
-              const jwtObj = parseJwt(res.authorization.id_token);
-              if (jwtObj) {
-                if (jwtObj.email) email = jwtObj.email;
-                if (jwtObj.sub) id = jwtObj.sub;
-                name = email.split("@")[0];
-              }
-            }
-
-            const userData = {
-              name,
-              email,
-              avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-              id,
-            };
-            localStorage.setItem("user", JSON.stringify(userData));
-            import("sonner").then(({ toast }) => toast.success(`Welcome back, ${userData.name}!`));
-            navigate({ to: "/home" });
-          })
-          .catch((err: any) => {
-            if (err?.error === "popup_closed_by_user") {
-              import("sonner").then(({ toast }) => toast.error("Apple Sign-In cancelled."));
-            } else {
-              const userEmail = prompt("Enter your Apple ID email address to sign in:", "victor@icloud.com");
-              if (userEmail) {
-                const userData = {
-                  name: userEmail.split("@")[0],
-                  email: userEmail,
-                  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-                  id: "apple-" + Date.now(),
-                };
-                localStorage.setItem("user", JSON.stringify(userData));
-                import("sonner").then(({ toast }) => toast.success(`Welcome, ${userData.name}!`));
-                navigate({ to: "/home" });
-              }
-            }
-          });
-      } catch {
-        const userEmail = prompt("Enter your Apple ID email address to sign in:", "victor@icloud.com");
-        if (userEmail) {
-          const userData = {
-            name: userEmail.split("@")[0],
-            email: userEmail,
-            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-            id: "apple-" + Date.now(),
-          };
-          localStorage.setItem("user", JSON.stringify(userData));
-          import("sonner").then(({ toast }) => toast.success(`Welcome, ${userData.name}!`));
-          navigate({ to: "/home" });
-        }
-      }
-    } else {
-      const userEmail = prompt("Enter your Apple ID email address to sign in:", "victor@icloud.com");
-      if (userEmail) {
-        const userData = {
-          name: userEmail.split("@")[0],
-          email: userEmail,
-          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-          id: "apple-" + Date.now(),
-        };
-        localStorage.setItem("user", JSON.stringify(userData));
-        import("sonner").then(({ toast }) => toast.success(`Welcome, ${userData.name}!`));
-        navigate({ to: "/home" });
-      }
-    }
-  };
-
   return (
     <PhoneFrame>
       <>
@@ -253,7 +165,7 @@ function SignIn() {
               {/* Social auth */}
               <div className="mt-10 flex flex-col gap-3.5 max-w-sm mx-auto">
                 <button
-                  onClick={handleAppleSignIn}
+                  onClick={handleGoogleSignIn}
                   className="w-full flex items-center justify-center gap-3 transition-transform active:scale-[0.99]"
                   style={{
                     height: 56,
@@ -265,28 +177,6 @@ function SignIn() {
                     letterSpacing: -0.2,
                     boxShadow:
                       "0 12px 28px -12px rgba(17,17,17,0.35), 0 4px 10px -4px rgba(17,17,17,0.2), inset 0 1px 0 rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <svg width="18" height="20" viewBox="0 0 384 512" fill="#FFF">
-                    <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
-                  </svg>
-                  <span>Continue with Apple</span>
-                </button>
-
-                <button
-                  onClick={handleGoogleSignIn}
-                  className="w-full flex items-center justify-center gap-3 transition-transform active:scale-[0.99]"
-                  style={{
-                    height: 56,
-                    borderRadius: 24,
-                    background: "rgba(255,255,255,0.95)",
-                    backdropFilter: "blur(20px)",
-                    boxShadow:
-                      "0 1px 2px rgba(17,17,17,0.04), 0 10px 28px -16px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.08)",
-                    fontSize: 15.5,
-                    fontWeight: 600,
-                    color: "#111111",
-                    letterSpacing: -0.2,
                   }}
                 >
                   <svg width="18" height="18" viewBox="0 0 48 48">
