@@ -1,9 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, Package, Heart, MapPin, CreditCard, Bell, Settings, HelpCircle, LogOut, Sparkles, Gift, Zap, Shirt, Palette, CheckCircle2, Store } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ChevronRight, Package, Heart, MapPin, CreditCard, Bell, Settings, HelpCircle, LogOut, Sparkles, Gift, Zap, Shirt, Palette, CheckCircle2, Store, ShieldCheck, PackagePlus } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import { useEffect, useState } from "react";
-import { getVendorProfile, VendorProfile } from "@/lib/vendor";
+import { VendorVerificationModal } from "@/components/vendor/VendorVerificationModal";
+import { VendorAddProductModal } from "@/components/vendor/VendorAddProductModal";
+import { getVendorProfile, isVendorVerified, VendorProfile } from "@/lib/vendor";
 
 export const Route = createFileRoute("/profile")({
   component: Profile,
@@ -11,11 +13,13 @@ export const Route = createFileRoute("/profile")({
 });
 
 function Profile() {
-  const navigate = Route.useNavigate();
+  const navigate = useNavigate();
   const [user, setUser] = useState<{ name?: string; email?: string; avatar?: string } | null>(null);
   const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
 
-  useEffect(() => {
+  const refreshVendorState = () => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("user");
       if (saved) {
@@ -23,12 +27,29 @@ function Profile() {
       }
       setVendorProfile(getVendorProfile());
     }
+  };
+
+  useEffect(() => {
+    refreshVendorState();
   }, []);
 
   const handleSignOut = () => {
     localStorage.removeItem("user");
     import("sonner").then(({ toast }) => toast.success("Signed out successfully"));
     navigate({ to: "/signin" });
+  };
+
+  const handleVendorCardClick = () => {
+    if (!user) {
+      import("sonner").then(({ toast }) => toast.error("Please sign in with Google first to become a vendor."));
+      navigate({ to: "/signin" });
+      return;
+    }
+    if (vendorProfile?.verified) {
+      setShowAddProductModal(true);
+    } else {
+      setShowVerifyModal(true);
+    }
   };
 
   return (
@@ -87,6 +108,52 @@ function Profile() {
               </div>
             </div>
 
+            {/* Become a Vendor Card */}
+            <div className="mx-5 mt-4 p-5 rounded-3xl relative overflow-hidden text-white shadow-xl"
+              style={{
+                background: vendorProfile?.verified 
+                  ? "linear-gradient(135deg, #0F62FE 0%, #1E40AF 100%)" 
+                  : "linear-gradient(135deg, #111111 0%, #2A2A2A 100%)",
+              }}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center">
+                    <Store className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold flex items-center gap-1.5">
+                      {vendorProfile?.verified ? "Verified Vendor Portal" : "Become a Vendor"}
+                      {vendorProfile?.verified && <CheckCircle2 className="w-4 h-4 text-white fill-white text-blue-600" />}
+                    </h3>
+                    <p className="text-xs text-white/70">
+                      {vendorProfile?.verified ? vendorProfile.storeName : "Sell your products online to thousands of shoppers"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/10">
+                <p className="text-xs text-white/80 max-w-[200px]">
+                  {vendorProfile?.verified ? "Upload products & manage listings" : "Requires Ghana Card & Facial Photo check for anti-scam security"}
+                </p>
+                <button
+                  onClick={handleVendorCardClick}
+                  className="px-4 py-2.5 rounded-full bg-white text-gray-900 text-xs font-bold shadow-md hover:bg-gray-100 transition-transform active:scale-95 flex items-center gap-1.5 shrink-0"
+                >
+                  {vendorProfile?.verified ? (
+                    <>
+                      <PackagePlus size={14} className="text-blue-600" /> Add Product
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={14} className="text-blue-600" /> Get Verified
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
             {/* Group 1 */}
             <MenuGroup>
               <MenuItem to="/orders" icon={<Package size={16} color="#0F62FE" />} label="Orders" hint="View history" />
@@ -126,6 +193,27 @@ function Profile() {
             </div>
           </div>
         </div>
+
+        {/* Vendor Verification Modal */}
+        <VendorVerificationModal
+          isOpen={showVerifyModal}
+          onClose={() => setShowVerifyModal(false)}
+          onSuccess={refreshVendorState}
+          userEmail={user?.email || "vendor@trends.com"}
+          userName={user?.name || "Shopper"}
+        />
+
+        {/* Vendor Add Product Modal */}
+        {user && vendorProfile && (
+          <VendorAddProductModal
+            isOpen={showAddProductModal}
+            onClose={() => setShowAddProductModal(false)}
+            onSuccess={refreshVendorState}
+            vendorName={vendorProfile.storeName || user.name || "Vendor"}
+            vendorId={vendorProfile.vendorId || "v-1"}
+          />
+        )}
+
         <BottomNav active="profile" />
         <HomeIndicator />
       </>
@@ -146,6 +234,7 @@ function MenuGroup({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
 function MenuItem({ to, icon, label, hint, last }: { to?: string; icon: React.ReactNode; label: string; hint?: string; last?: boolean }) {
   const content = (
     <div className="flex items-center gap-3 px-4" style={{ height: 56, borderBottom: last ? "none" : "1px solid rgba(17,17,17,0.05)" }}>
