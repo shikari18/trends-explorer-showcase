@@ -206,17 +206,17 @@ function Home() {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
   const newArrivalsOffset = (dayOfYear * 8) % Math.max(1, products.length - 8);
   const newArrivals = products.slice(newArrivalsOffset, newArrivalsOffset + 8);
-  const mappedVendorProducts = vendorProducts.map((vp) => ({
-    id: vp.id,
-    cjId: vp.id,
-    brand: vp.vendorName,
-    name: vp.title,
-    price: `₵${(vp.price * 15).toLocaleString()}`,
-    rawPrice: vp.price * 15,
-    img: vp.images[0] || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+  const mappedVendorProducts = (Array.isArray(vendorProducts) ? vendorProducts : []).map((vp) => ({
+    id: vp.id || `v-${Math.random()}`,
+    cjId: vp.id || `v-${Math.random()}`,
+    brand: vp.vendorName || "Vendor Store",
+    name: vp.title || "Vendor Product",
+    price: `₵${(Number(vp.price || 10) * 15).toLocaleString()}`,
+    rawPrice: Number(vp.price || 10) * 15,
+    img: (Array.isArray(vp.images) && vp.images[0]) || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
     rating: 5.0,
     reviews: "1",
-    vendorName: vp.vendorName,
+    vendorName: vp.vendorName || "Vendor",
     vendorVerified: true,
   }));
 

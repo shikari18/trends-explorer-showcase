@@ -32,7 +32,8 @@ export function getVendorProfile(): VendorProfile | null {
   const saved = localStorage.getItem(VENDOR_KEY);
   if (!saved) return null;
   try {
-    return JSON.parse(saved);
+    const parsed = JSON.parse(saved);
+    return (parsed && typeof parsed === "object" && !Array.isArray(parsed)) ? parsed : null;
   } catch {
     return null;
   }
@@ -64,7 +65,8 @@ export function getVendorProducts(): VendorProduct[] {
   const saved = localStorage.getItem(VENDOR_PRODUCTS_KEY);
   if (!saved) return [];
   try {
-    return JSON.parse(saved);
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
