@@ -1,8 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Moon, Bell, Languages, Globe, ShieldCheck, ScanFace, DollarSign, Sparkles, Database, Info } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Moon, Bell, Languages, Globe, ShieldCheck, ScanFace, DollarSign, Sparkles, Database, Info, CheckCircle2, Store, PackagePlus } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
+import { VendorVerificationModal } from "@/components/vendor/VendorVerificationModal";
+import { VendorAddProductModal } from "@/components/vendor/VendorAddProductModal";
+import { getVendorProfile, isVendorVerified, VendorProfile } from "@/lib/vendor";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
@@ -10,20 +13,44 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
+  const navigate = useNavigate();
   const [dark, setDark] = useState(false);
   const [push, setPush] = useState(true);
   const [face, setFace] = useState(true);
   const [ai, setAi] = useState(true);
-  const [user, setUser] = useState<{ name?: string; email?: string; avatar?: string } | null>(null);
+  const [user, setUser] = useState<{ name?: string; email?: string; avatar?: string; isVendor?: boolean } | null>(null);
 
-  useEffect(() => {
+  const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+
+  const refreshVendorState = () => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("user");
       if (saved) {
         try { setUser(JSON.parse(saved)); } catch { setUser(null); }
       }
+      setVendorProfile(getVendorProfile());
     }
+  };
+
+  useEffect(() => {
+    refreshVendorState();
   }, []);
+
+  const handleVendorCardClick = () => {
+    if (!user) {
+      import("sonner").then(({ toast }) => toast.error("Please sign in with Google to become a vendor."));
+      navigate({ to: "/signin" });
+      return;
+    }
+
+    if (vendorProfile?.verified) {
+      setShowAddProductModal(true);
+    } else {
+      setShowVerifyModal(true);
+    }
+  };
 
   return (
     <PhoneFrame>
@@ -52,15 +79,70 @@ function SettingsPage() {
                   (user?.name?.[0] || user?.email?.[0] || "G").toUpperCase()
                 )}
               </div>
-              <div className="flex-1">
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>
-                  {user?.name || (user?.email ? user.email.split("@")[0] : "Guest User")}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5" style={{ fontSize: 15, fontWeight: 700, color: "#111", letterSpacing: -0.3 }}>
+                  <span className="truncate">{user?.name || (user?.email ? user.email.split("@")[0] : "Guest User")}</span>
+                  {vendorProfile?.verified && (
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 fill-blue-600 text-white shrink-0" />
+                  )}
                 </div>
                 <div style={{ fontSize: 12, color: "#666" }}>
-                  {user ? (user.email || "Member") : "Not signed in"}
+                  {vendorProfile?.verified ? (
+                    <span className="text-blue-600 font-semibold">Verified Vendor • {vendorProfile.storeName}</span>
+                  ) : user ? (
+                    user.email || "Member"
+                  ) : (
+                    "Not signed in"
+                  )}
                 </div>
               </div>
               <ChevronRight size={16} color="#8A8A8A" />
+            </div>
+
+            {/* Become a Vendor Card */}
+            <div className="mx-5 mt-4 p-5 rounded-3xl relative overflow-hidden text-white shadow-xl"
+              style={{
+                background: vendorProfile?.verified 
+                  ? "linear-gradient(135deg, #0F62FE 0%, #1E40AF 100%)" 
+                  : "linear-gradient(135deg, #111111 0%, #2A2A2A 100%)",
+              }}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center">
+                    <Store className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold flex items-center gap-1.5">
+                      {vendorProfile?.verified ? "Verified Vendor Portal" : "Become a Vendor"}
+                      {vendorProfile?.verified && <CheckCircle2 className="w-4 h-4 text-white fill-white text-blue-600" />}
+                    </h3>
+                    <p className="text-xs text-white/70">
+                      {vendorProfile?.verified ? vendorProfile.storeName : "Sell your products online to thousands of shoppers"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/10">
+                <p className="text-xs text-white/80 max-w-[200px]">
+                  {vendorProfile?.verified ? "Upload products & manage listings" : "Requires Ghana Card & Facial Photo check for anti-scam security"}
+                </p>
+                <button
+                  onClick={handleVendorCardClick}
+                  className="px-4 py-2.5 rounded-full bg-white text-gray-900 text-xs font-bold shadow-md hover:bg-gray-100 transition-transform active:scale-95 flex items-center gap-1.5 shrink-0"
+                >
+                  {vendorProfile?.verified ? (
+                    <>
+                      <PackagePlus size={14} className="text-blue-600" /> Add Product
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={14} className="text-blue-600" /> Get Verified
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             <GroupLabel>Appearance</GroupLabel>
@@ -102,6 +184,20 @@ function SettingsPage() {
             </div>
           </div>
         </div>
+        <VendorVerificationModal
+          isOpen={showVerifyModal}
+          onClose={() => setShowVerifyModal(false)}
+          onSuccess={refreshVendorState}
+        />
+        {user && vendorProfile && (
+          <VendorAddProductModal
+            isOpen={showAddProductModal}
+            onClose={() => setShowAddProductModal(false)}
+            onSuccess={refreshVendorState}
+            vendorName={vendorProfile.storeName || user.name || "Vendor"}
+            vendorId={vendorProfile.vendorId || "v-1"}
+          />
+        )}
         <BottomNav active="profile" />
         <HomeIndicator />
       </>

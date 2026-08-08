@@ -1,44 +1,42 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Mic, Camera, Heart, ArrowUpRight, ShoppingCart, Check, Loader2 } from "lucide-react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useState, useEffect, useRef } from "react";
+import { Search, Camera, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
-import heroSummer from "@/assets/home-hero-summer.jpg";
 import curated from "@/assets/home-curated.jpg";
-import { fetchCategoryPage, CATEGORIES, CATEGORY_MAP, CJProduct } from "@/lib/cjApi";
+import bag from "@/assets/home-bag.jpg";
+import watch from "@/assets/home-watch.jpg";
+import tote from "@/assets/prod-tote.jpg";
+import { getCJProducts, getCJSearch, parseCJSafetyPrice } from "@/lib/cjApi";
+import { getVendorProfile, getVendorProducts, VendorProduct } from "@/lib/vendor";
+import { VendorAddProductModal } from "@/components/vendor/VendorAddProductModal";
 
 export const Route = createFileRoute("/home")({
   component: Home,
   head: () => ({
     meta: [
-      { title: "Trends — Home" },
-      { name: "description", content: "Discover millions of products on Trends." },
+      { title: "Trends — Explore Curated Products" },
+      { name: "description", content: "Discover top trending fashion, tech, decor, and accessories on Trends." },
     ],
   }),
 });
 
-const BRANDS = ["Apple", "Nike", "Adidas", "Sony", "Samsung", "Dyson"];
-
 function Home() {
   const navigate = useNavigate();
-  const [activeCat, setActiveCat] = useState("Random");
-  const [wishlist, setWishlist] = useState<string[]>([]);
-  const [addedToCartIds, setAddedToCartIds] = useState<string[]>([]);
-
-  // Live products state
-  const [products, setProducts] = useState<CJProduct[]>([]);
+  const [activeCat, setActiveCat] = useState("All");
+  const [products, setProducts] = useState<any[]>([]);
+  const [vendorProducts, setVendorProducts] = useState<VendorProduct[]>([]);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [addedToCartIds, setAddedToCartIds] = useState<string[]>([]);
+  const [currentUser, setCurrentUser] = useState<{ name?: string; email?: string; avatar?: string; isVendor?: boolean } | null>(null);
+  const [vendorProfile, setVendorProfile] = useState<any>(null);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
 
-  // Infinite scroll sentinel
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  const [currentUser, setCurrentUser] = useState<{ name?: string; email?: string; avatar?: string } | null>(null);
-
-  // Load wishlist & current user
+  // Load wishlist, current user, & vendor products
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedWishlist = localStorage.getItem("wishlist");
@@ -52,6 +50,9 @@ function Home() {
           setCurrentUser(null);
         }
       }
+
+      setVendorProfile(getVendorProfile());
+      setVendorProducts(getVendorProducts());
     }
   }, []);
 
@@ -252,19 +253,32 @@ function Home() {
             <div className="px-6 pt-14 flex items-start justify-between">
               <div>
                 <div style={{ fontSize: 13.5, color: "#8A8A8A", letterSpacing: -0.1, fontWeight: 500 }}>
-                  {currentUser ? "Welcome Back" : "Welcome to Trends"}
+                  {currentUser ? (vendorProfile?.verified ? "Verified Vendor Portal" : "Welcome Back") : "Welcome to Trends"}
                 </div>
-                <h1 className="mt-1" style={{ fontSize: 28, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.8, color: "#111111" }}>
-                  {currentUser ? (currentUser.name || currentUser.email?.split("@")[0] || "Shopper") : "Discover"} <span style={{ fontWeight: 400 }}>👋</span>
+                <h1 className="mt-1 flex items-center gap-1.5" style={{ fontSize: 28, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.8, color: "#111111" }}>
+                  <span>{currentUser ? (currentUser.name || currentUser.email?.split("@")[0] || "Shopper") : "Discover"}</span>
+                  {vendorProfile?.verified ? (
+                    <CheckCircle2 className="w-5 h-5 text-blue-600 fill-blue-600 text-white shrink-0" />
+                  ) : (
+                    <span style={{ fontWeight: 400 }}>👋</span>
+                  )}
                 </h1>
               </div>
               <div className="flex items-center gap-2">
+                {vendorProfile?.verified && (
+                  <button
+                    onClick={() => setShowAddProductModal(true)}
+                    className="flex items-center gap-1 px-3 py-2 rounded-full bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-blue-700 transition-transform active:scale-95 shrink-0"
+                  >
+                    <PackagePlus size={14} /> Add Product
+                  </button>
+                )}
                 <Link to="/wishlist" aria-label="Wishlist" className="flex items-center justify-center shrink-0"
                   style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)" }}>
                   <Heart size={20} strokeWidth={2.2} color="#FF3B30" fill="#FF3B30" />
                 </Link>
                 {currentUser ? (
-                  <Link to="/profile" aria-label="Go to profile" className="flex items-center justify-center shrink-0 overflow-hidden"
+                  <Link to="/profile" aria-label="Go to profile" className="flex items-center justify-center shrink-0 overflow-hidden relative"
                     style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)", fontSize: 15, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>
                     {currentUser.avatar ? (
                       <img src={currentUser.avatar} alt={currentUser.name || "User"} className="w-full h-full object-cover" />
@@ -494,10 +508,15 @@ function Home() {
                         <div className="px-3.5 py-3">
                           <div style={{ fontSize: 10, color: "#8A8A8A", letterSpacing: 0.2, fontWeight: 700, textTransform: "uppercase" }}>{p.brand}</div>
                           <div className="mt-0.5 truncate" style={{ fontSize: 13.5, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>{p.name}</div>
-                          <div className="mt-1 flex items-center justify-between">
+                          <div className="mt-1 flex items-center justify-between gap-1">
                             <span style={{ fontSize: 13.5, fontWeight: 700, color: "#111" }}>{p.price}</span>
+                            {p.vendorName && (
+                              <span className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5 ml-auto mr-1 truncate">
+                                By {p.vendorName} <CheckCircle2 className="w-3 h-3 fill-blue-600 text-white shrink-0" />
+                              </span>
+                            )}
                             <button onClick={(e) => addToCart(p, e)} aria-label="Add to cart"
-                              className="flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                              className="flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0"
                               style={{ width: 29, height: 29, borderRadius: 999, background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)", transition: "background-color 0.3s ease" }}>
                               {isAdded ? <Check size={12} color="#fff" strokeWidth={3} /> : <ShoppingCart size={12} color="#111" strokeWidth={2.2} />}
                             </button>
@@ -544,6 +563,16 @@ function Home() {
             </div>
           </div>
         </div>
+
+        {currentUser && vendorProfile && (
+          <VendorAddProductModal
+            isOpen={showAddProductModal}
+            onClose={() => setShowAddProductModal(false)}
+            onSuccess={() => setVendorProducts(getVendorProducts())}
+            vendorName={vendorProfile.storeName || currentUser.name || "Vendor"}
+            vendorId={vendorProfile.vendorId || "v-1"}
+          />
+        )}
 
         <BottomNav active="home" variant="home" />
         <HomeIndicator />

@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, Package, Heart, MapPin, CreditCard, Bell, Settings, HelpCircle, LogOut, Sparkles, Gift, Zap, Shirt, Palette } from "lucide-react";
+import { ChevronRight, Package, Heart, MapPin, CreditCard, Bell, Settings, HelpCircle, LogOut, Sparkles, Gift, Zap, Shirt, Palette, CheckCircle2, Store } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import { useEffect, useState } from "react";
+import { getVendorProfile, VendorProfile } from "@/lib/vendor";
 
 export const Route = createFileRoute("/profile")({
   component: Profile,
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/profile")({
 function Profile() {
   const navigate = Route.useNavigate();
   const [user, setUser] = useState<{ name?: string; email?: string; avatar?: string } | null>(null);
+  const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -19,6 +21,7 @@ function Profile() {
       if (saved) {
         try { setUser(JSON.parse(saved)); } catch { setUser(null); }
       }
+      setVendorProfile(getVendorProfile());
     }
   }, []);
 
@@ -60,11 +63,20 @@ function Profile() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>
-                    {user?.name || (user?.email ? user.email.split("@")[0] : "Guest Shopper")}
+                  <div className="flex items-center gap-1.5" style={{ fontSize: 18, fontWeight: 700, color: "#111", letterSpacing: -0.4 }}>
+                    <span className="truncate">{user?.name || (user?.email ? user.email.split("@")[0] : "Guest Shopper")}</span>
+                    {vendorProfile?.verified && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 fill-blue-600 text-white shrink-0" />
+                    )}
                   </div>
                   <div className="mt-0.5 truncate" style={{ fontSize: 12.5, color: "#666" }}>
-                    {user?.email || "Sign in to manage orders & wishlist"}
+                    {vendorProfile?.verified ? (
+                      <span className="text-blue-600 font-semibold flex items-center gap-1">
+                        <Store size={12} /> {vendorProfile.storeName}
+                      </span>
+                    ) : (
+                      user?.email || "Sign in to manage orders & wishlist"
+                    )}
                   </div>
                 </div>
                 {user ? (
