@@ -524,6 +524,37 @@ async function clientFetchProductDetailDirect(cjPid: string): Promise<any> {
 export async function fetchProductDetail(
   idOrCjId: string
 ): Promise<CJProductDetail | null> {
+  // Check if this is a vendor product
+  if (typeof window !== "undefined") {
+    try {
+      const savedVp = localStorage.getItem("trends_vendor_products");
+      if (savedVp) {
+        const vList: any[] = JSON.parse(savedVp);
+        const vp = vList.find((item) => item.id === idOrCjId);
+        if (vp) {
+          return {
+            id: vp.id,
+            cjId: vp.id,
+            brand: vp.vendorName,
+            name: vp.title,
+            price: `₵${(vp.price * 15).toLocaleString()}`,
+            rawPrice: vp.price * 15,
+            img: vp.images[0] || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+            images: vp.images.length > 0 ? vp.images : ["https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"],
+            rating: 5.0,
+            reviews: "1",
+            description: vp.description,
+            category: vp.category,
+            vendorName: vp.vendorName,
+            vendorVerified: true,
+            videoUrl: null,
+            variants: [],
+          };
+        }
+      }
+    } catch {}
+  }
+
   // Try local cache first (for cached products with generated IDs)
   const cached = getProductById(idOrCjId)
     // Also try looking up by cjId (the raw CJ PID passed from live API products)

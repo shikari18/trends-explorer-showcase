@@ -205,8 +205,21 @@ function Home() {
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
   const newArrivalsOffset = (dayOfYear * 8) % Math.max(1, products.length - 8);
   const newArrivals = products.slice(newArrivalsOffset, newArrivalsOffset + 8);
-  const recommended = products.slice(newArrivalsOffset + 8, newArrivalsOffset + 14);
-  const trending = products;
+  const mappedVendorProducts = vendorProducts.map((vp) => ({
+    id: vp.id,
+    cjId: vp.id,
+    brand: vp.vendorName,
+    name: vp.title,
+    price: `₵${(vp.price * 15).toLocaleString()}`,
+    rawPrice: vp.price * 15,
+    img: vp.images[0] || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
+    rating: 5.0,
+    reviews: "1",
+    vendorName: vp.vendorName,
+    vendorVerified: true,
+  }));
+
+  const trending = [...mappedVendorProducts, ...products];
 
   // 9 Hero Banner Themes (auto-cycles every 4 seconds with smooth cross-fade)
   const HERO_THEMES = [
@@ -486,7 +499,7 @@ function Home() {
                     const isLiked = wishlist.includes(p.id);
                     const isAdded = addedToCartIds.includes(p.id);
                     return (
-                      <Link to="/product/$id" params={{ id: p.cjId }} key={p.id} className="overflow-hidden block group active:scale-[0.98] transition-all"
+                      <Link to="/product/$id" params={{ id: p.cjId || p.id }} key={p.id} className="overflow-hidden block group active:scale-[0.98] transition-all"
                         style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                         <div className="relative overflow-hidden" style={{ background: "#F7F7F5" }}>
                           <img
