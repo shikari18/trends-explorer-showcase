@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Mic, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus, Zap, Store } from "lucide-react";
+import { Search, Mic, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus, Zap, Store, User } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import heroSummer from "@/assets/home-hero-summer.jpg";
@@ -268,7 +268,7 @@ function Home() {
           style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
         >
           <div className="pb-36">
-            {/* Search Header (Restored Clean Search Bar without camera) */}
+            {/* Top Search Header with Profile Icon on Top Right */}
             <div className="px-6 pt-5 flex items-center gap-3">
               <Link
                 to="/search"
@@ -286,12 +286,22 @@ function Home() {
                 </span>
               </Link>
               <Link
-                to="/search"
-                aria-label="Voice search"
-                className="flex items-center justify-center shrink-0"
-                style={circleBtnStyle}
+                to="/profile"
+                aria-label="Profile"
+                className="flex items-center justify-center shrink-0 overflow-hidden"
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 999,
+                  background: "#F7F7F5",
+                  boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
+                }}
               >
-                <Mic size={17} color="#111" />
+                {currentUser?.avatar ? (
+                  <img src={currentUser.avatar} alt="User Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={19} color="#111" />
+                )}
               </Link>
             </div>
 
