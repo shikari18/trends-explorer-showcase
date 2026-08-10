@@ -163,7 +163,7 @@ function detectCategoryFromQuery(query: string): string | null {
   return null;
 }
 
-const API_KEY = "CJ5632497@api@dd88d4a73e5d4f07905c86c16f263276";
+const API_KEY = "MCP@CJ5632497@CJ:eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiI0MzI5OSIsInR5cGUiOiJBQ0NFU1NfVE9LRU4iLCJzdWIiOiJtNnViRnRCamYraDhqaEdNeklGeXdPRDdpVWtIL1grRzJUNlFSNS8valN0NklnbjB3ZHBTM3gwYyt6MEVrZ2ZZR0NOREh1c0pmSTg4c0hNdUxmUTNPNWRpdWZIWkhPMlhvTFlFTlpVdVBDSU5aUHNrODF4TVlaRm9LTG9GblF5WFJSazJkUUw5d2Z4SXRCMkNBeEVrM0NCb2U5SmJsR0ZBOE9MYzUxdGJ4WGhKN3hma3NxVld0Mko3a1NaVWJrZURyUXdacndzZngwUjA2T3VLRGZwbWlaRk4yemdCYmZSYnBWdHhHdEhCMFVCcjFDU1Q3b1B2WlV6NDFITnZ3TzkxTklGVHc3K3BPRm9Zai9PNnYyNHhKSURiUzkrb096VUgvZkJ1QnlIYWllMD0iLCJpYXQiOjE3ODYzMjcwMTl9.tliR4pAvCW5OUYHcsbShRqflH3eVhXVhG5_xVCKRuRE";
 const AUTH_URL = "https://developers.cjdropshipping.com/api2.0/v1/authentication/getAccessToken";
 const LIST_URL = "https://developers.cjdropshipping.com/api2.0/v1/product/listV2";
 
@@ -173,6 +173,7 @@ let _tokenFetchedAt = 0;
 // SERVER FUNCTIONS — Runs strictly on the server-side to prevent browser CORS issues
 
 const serverGetToken = createServerFn({ method: "GET" }).handler(async () => {
+  if (API_KEY.startsWith("MCP@")) return API_KEY;
   const now = Date.now();
   if (_token && now - _tokenFetchedAt < 23 * 60 * 60 * 1000) return _token;
 
