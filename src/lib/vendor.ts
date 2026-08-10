@@ -166,6 +166,17 @@ export function syncUserVendorAccount(userEmail: string): VendorProfile | null {
   if (profile && profile.verified) {
     saveVendorProfile(profile);
   }
+  const savedUser = localStorage.getItem("user");
+  let uObj: any = null;
+  if (savedUser) {
+    try { uObj = JSON.parse(savedUser); } catch {}
+  }
+  registerOrUpdateUser({
+    email: cleanEmail,
+    name: uObj?.name || cleanEmail.split("@")[0],
+    avatar: uObj?.avatar,
+    id: uObj?.id,
+  });
   return profile;
 }
 
@@ -250,4 +261,88 @@ export async function validatePassportPhoto(file: File): Promise<{ valid: boolea
     reader.onerror = () => resolve({ valid: false, reason: "Failed to read image file." });
     reader.readAsDataURL(file);
   });
+}
+
+export interface RegisteredUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  storeName?: string;
+  registeredAt: string;
+  status: string;
+}
+
+const REGISTERED_USERS_KEY = "trends_registered_users_list";
+
+export function registerOrUpdateUser(user: { name: string; email: string; avatar?: string; id?: string }): void {
+  if (typeof window === "undefined" || !user?.email) return;
+  const cleanEmail = user.email.toLowerCase();
+  
+  let existingList: RegisteredUser[] = [];
+  try {
+    const raw = localStorage.getItem(REGISTERED_USERS_KEY);
+    if (raw) existingList = JSON.parse(raw);
+  } catch {}
+
+  const vendor = getVendorProfile(cleanEmail);
+  const isVendor = !!(vendor && vendor.verified);
+
+  const updatedUser: RegisteredUser = {
+    id: user.id || `usr-${Date.now()}`,
+    name: user.name || cleanEmail.split("@")[0],
+    email: cleanEmail,
+    avatar: user.avatar,
+    role: isVendor ? "Ghana Verified Vendor" : "Customer Account",
+    storeName: vendor?.storeName,
+    registeredAt: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+    status: isVendor ? "Verified Vendor ⚡" : "Active User",
+  };
+
+  const idx = existingList.findIndex((u) => u.email.toLowerCase() === cleanEmail);
+  if (idx >= 0) {
+    existingList[idx] = { ...existingList[idx], ...updatedUser };
+  } else {
+    existingList.unshift(updatedUser);
+  }
+
+  localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(existingList));
+}
+
+export function getAllRegisteredUsers(): RegisteredUser[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(REGISTERED_USERS_KEY);
+    let users: RegisteredUser[] = raw ? JSON.parse(raw) : [];
+
+    // Check active logged in user from localStorage 'user'
+    const currentUserRaw = localStorage.getItem("user");
+    if (currentUserRaw) {
+      const cu = JSON.parse(currentUserRaw);
+      if (cu?.email) {
+        const cleanEmail = cu.email.toLowerCase();
+        const exists = users.some((u) => u.email.toLowerCase() === cleanEmail);
+        if (!exists) {
+          const vendor = getVendorProfile(cleanEmail);
+          const newUser: RegisteredUser = {
+            id: cu.id || `usr-${Date.now()}`,
+            name: cu.name || cleanEmail.split("@")[0],
+            email: cleanEmail,
+            avatar: cu.avatar,
+            role: vendor?.verified ? "Ghana Verified Vendor" : "Customer Account",
+            storeName: vendor?.storeName,
+            registeredAt: "Active Session",
+            status: vendor?.verified ? "Verified Vendor ⚡" : "Active User",
+          };
+          users.unshift(newUser);
+          localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(users));
+        }
+      }
+    }
+
+    return users;
+  } catch {
+    return [];
+  }
 }
