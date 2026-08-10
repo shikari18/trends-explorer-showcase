@@ -550,9 +550,17 @@ function ProductDetail() {
                     <span style={{ width: 8, height: 8, borderRadius: 999, background: "#34C759", boxShadow: "0 0 0 3px rgba(52,199,89,0.18)" }} />
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: "#34C759" }}>In Stock</span>
                   </div>
-                  <div className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-600 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
-                    <Truck size={11} strokeWidth={2} color="#0F62FE" />
-                    <span>Arrives within {((parseInt(product?.id || "1", 36) % 2 === 0) ? "8-15" : "12-25")} days</span>
+                  <div className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                    product?.vendorName || product?.vendorVerified || product?.id?.startsWith("v-")
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300"
+                      : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600"
+                  }`}>
+                    <Truck size={11} strokeWidth={2} color={product?.vendorName || product?.vendorVerified || product?.id?.startsWith("v-") ? "#059669" : "#0F62FE"} />
+                    <span>
+                      {product?.vendorName || product?.vendorVerified || product?.id?.startsWith("v-")
+                        ? "⚡ Arrives in 1-2 Days (Ghana Express)"
+                        : `Arrives within ${((parseInt(product?.id || "1", 36) % 2 === 0) ? "8-15" : "12-25")} days`}
+                    </span>
                   </div>
                 </div>
               </div>

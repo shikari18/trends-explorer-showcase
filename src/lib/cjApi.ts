@@ -43,7 +43,7 @@ export async function ensureClientCacheLoaded(): Promise<Record<string, CJProduc
   return getCacheProducts();
 }
 
-function getAllCachedProducts(): CJProduct[] {
+export function getAllCachedProducts(): CJProduct[] {
   const cache = (_cacheData && Object.keys(_cacheData).length > 0) ? _cacheData : getCacheProducts();
   return Object.values(cache).flat();
 }
@@ -97,7 +97,11 @@ export const SLUG_TO_CATEGORY: Record<string, string> = {
   "computer-office": "Computer & Office"
 };
 
-export const CATEGORIES = ["Random", ...Object.keys(CATEGORY_MAP)];
+export const CATEGORIES = [
+  "Random",
+  "⚡ Express 1-2 Days (Ghana Stock)",
+  ...Object.keys(CATEGORY_MAP)
+];
 
 export interface CJProduct {
   id: string;
@@ -348,9 +352,20 @@ export async function fetchCategoryPage(
 
   // Fallback to cache loop if live API is unreachable
   const cache = getCacheProducts();
-  const rawList = category === "Random"
-    ? getInterleavedProducts()
-    : ((cache || {}) as Record<string, CJProduct[]>)[category] || getAllCachedProducts();
+  let rawList = getAllCachedProducts();
+  if (category === "Random") {
+    rawList = getInterleavedProducts();
+  } else if (category.includes("Express") || category.includes("Vendor") || category.includes("1-2")) {
+    // Local Ghana Express Stock: tag all products as local 1-2 day express vendor products
+    rawList = getAllCachedProducts().map((p) => ({
+      ...p,
+      brand: p.brand || "Ghana Local Vendor",
+      vendorName: p.vendorName || `${p.brand} Ghana Store`,
+      vendorVerified: true,
+    }));
+  } else if (((cache || {}) as Record<string, CJProduct[]>)[category]) {
+    rawList = cache[category];
+  }
     
   const totalItems = rawList.length || 1;
   const start = ((page - 1) * pageSize) % totalItems;

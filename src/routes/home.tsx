@@ -22,6 +22,13 @@ export const Route = createFileRoute("/home")({
   }),
 });
 
+const DEFAULT_FALLBACK_PRODUCTS: CJProduct[] = [
+  { id: "cj-women-1", cjId: "2505020329151621400", brand: "Aura Studio", name: "Casual Loose Trousers Women's Suit", price: "₵137", rawPrice: 137, img: "https://cf.cjdropshipping.com/quick/product/5b6710b1-8222-44e7-a886-dfcff97b6fdb.jpg", rating: 4.8, reviews: "120" },
+  { id: "cj-tech-1", cjId: "18237192", brand: "Sony", name: "Wireless Noise Cancelling Gaming Headphones", price: "₵389", rawPrice: 389, img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "450" },
+  { id: "cj-men-1", cjId: "98127391", brand: "Off-White", name: "Streetwear Oversized Graphic Hoodie", price: "₵245", rawPrice: 245, img: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80", rating: 4.7, reviews: "98" },
+  { id: "cj-watch-1", cjId: "77619283", brand: "Nordic", name: "Minimalist Chronograph Gold Watch", price: "₵520", rawPrice: 520, img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "310" },
+];
+
 function Home() {
   const navigate = useNavigate();
   const [activeCat, setActiveCat] = useState("All");
@@ -36,6 +43,16 @@ function Home() {
   const [currentUser, setCurrentUser] = useState<{ name?: string; email?: string; avatar?: string; isVendor?: boolean } | null>(null);
   const [vendorProfile, setVendorProfile] = useState<any>(null);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  // Auto-cycle hero banner theme every 4 seconds with smooth cross-fade animation
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => (prev + 1) % 9);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Load wishlist, current user, & vendor products
   useEffect(() => {
@@ -93,8 +110,7 @@ function Home() {
       let newItems: CJProduct[];
       let more: boolean;
 
-      if (cat === "Random") {
-        // Balanced 14-category mix (Tech, Furniture, Clothes, Jewelry, Shoes, Toys, etc.)
+      if (cat === "Random" || cat === "All") {
         const allCatKeys = [
           "Consumer Electronics",
           "Home, Garden & Furniture",
@@ -111,7 +127,6 @@ function Home() {
           "Automobiles & Motorcycles",
           "Health, Beauty & Hair"
         ];
-        // Fetch 4 products from ALL 14 categories = 56 diverse products per page
         const perCat = 4;
         const results = await Promise.allSettled(
           allCatKeys.map((c) => fetchCategoryPage(c, pageNum, perCat))
@@ -126,12 +141,11 @@ function Home() {
             if (i < arr.length) interleaved.push(arr[i]);
           }
         }
-        // Shuffle on app refresh for exciting variety
-        newItems = interleaved.sort(() => Math.random() - 0.5);
+        newItems = interleaved.length > 0 ? interleaved.sort(() => Math.random() - 0.5) : DEFAULT_FALLBACK_PRODUCTS;
         more = true;
       } else {
         const res = await fetchCategoryPage(cat, pageNum, 50);
-        newItems = res.products;
+        newItems = res.products.length > 0 ? res.products : DEFAULT_FALLBACK_PRODUCTS;
         more = true;
       }
 
@@ -140,6 +154,7 @@ function Home() {
       setPage(pageNum + 1);
     } catch (e) {
       console.error(e);
+      setProducts((prev) => (prev.length === 0 ? DEFAULT_FALLBACK_PRODUCTS : prev));
     } finally {
       setLoading(false);
       setInitialLoading(false);
@@ -181,7 +196,7 @@ function Home() {
     });
   };
 
-  const addToCart = (p: CJProduct, e: React.MouseEvent) => {
+  const addToCart = (p: any, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (typeof window !== "undefined") {
@@ -218,16 +233,15 @@ function Home() {
     vendorVerified: true,
   }));
 
-  // Dynamic daily rotation for 8 New Arrivals (changes every day)
+  const pool = products.length > 0 ? products : DEFAULT_FALLBACK_PRODUCTS;
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-  const newArrivalsOffset = (dayOfYear * 8) % Math.max(1, products.length - 8);
-  const newArrivals = [...mappedVendorProducts, ...products.slice(newArrivalsOffset, newArrivalsOffset + 8)];
-  const recommendedOffset = (dayOfYear * 4 + 3) % Math.max(1, products.length - 4);
-  const recommended = products.slice(recommendedOffset, recommendedOffset + 4);
+  const newArrivalsOffset = (dayOfYear * 8) % Math.max(1, pool.length - 8);
+  const newArrivals = [...mappedVendorProducts, ...pool.slice(newArrivalsOffset, newArrivalsOffset + 8)];
+  const recommendedOffset = (dayOfYear * 4 + 3) % Math.max(1, pool.length - 4);
+  const recommended = pool.slice(recommendedOffset, recommendedOffset + 4);
+  const trending = [...mappedVendorProducts, ...pool];
 
-  const trending = [...mappedVendorProducts, ...products];
-
-  // 9 Hero Banner Themes (auto-cycles every 4 seconds with smooth cross-fade)
+  // 9 Hero Banner Themes
   const HERO_THEMES = [
     { title: "Pro Gaming\nHeadsets & Gear", subtitle: "Level Up Your Setup", tag: "Gaming Gear", img: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80", slug: "consumer-electronics" },
     { title: "Educational Toys\n& Kids Gaming", subtitle: "Play & Learn Collection", tag: "Toys & Hobbies", img: "https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?auto=format&fit=crop&w=800&q=80", slug: "toys-kids-babies" },
@@ -240,106 +254,83 @@ function Home() {
     { title: "Modern Home\n& Living Decor", subtitle: "Transform Your Space", tag: "Home Aesthetics", img: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80", slug: "home-garden-furniture" }
   ];
 
-  const [heroIndex, setHeroIndex] = useState(0);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setHeroIndex((prev) => (prev + 1) % HERO_THEMES.length);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, []);
-
-  const currentHero = HERO_THEMES[heroIndex];
-
   return (
     <PhoneFrame>
       <>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0"
-          style={{ height: 320, background: "radial-gradient(80% 100% at 50% 0%, rgba(15,98,254,0.05) 0%, rgba(255,255,255,0) 70%)" }}
-        />
         <StatusBar />
-
         <div
           ref={mainScrollRef}
           onScroll={handleScroll}
           className="relative flex-1 overflow-y-auto overscroll-contain"
           style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
         >
-          <div className="pb-32">
-            <div className="px-6 pt-14 flex items-start justify-between">
-              <div>
-                <div style={{ fontSize: 13.5, color: "#8A8A8A", letterSpacing: -0.1, fontWeight: 500 }}>
-                  {currentUser ? (vendorProfile?.verified ? "Verified Vendor Portal" : "Welcome Back") : "Welcome to Trends"}
-                </div>
-                <h1 className="mt-1 flex items-center gap-1.5" style={{ fontSize: 28, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.8, color: "#111111" }}>
-                  <span>{currentUser ? (currentUser.name || currentUser.email?.split("@")[0] || "Shopper") : "Discover"}</span>
-                  {vendorProfile?.verified ? (
-                    <CheckCircle2 className="w-5 h-5 text-blue-600 fill-blue-600 text-white shrink-0" />
-                  ) : (
-                    <span style={{ fontWeight: 400 }}>👋</span>
-                  )}
-                </h1>
-              </div>
-              <div className="flex items-center gap-2">
-                {vendorProfile?.verified && (
+          <div className="pb-36">
+            {/* Search Header */}
+            <div className="px-6 pt-5 flex items-center gap-3">
+              <Link
+                to="/search"
+                className="flex-1 flex items-center gap-2.5 px-4"
+                style={{
+                  height: 48,
+                  borderRadius: 999,
+                  background: "#F7F7F5",
+                  boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
+                }}
+              >
+                <Search size={17} color="#8A8A8A" />
+                <span style={{ fontSize: 14, color: "#8A8A8A", fontWeight: 400 }}>
+                  Search 42,000+ products & brands
+                </span>
+              </Link>
+              <Link
+                to="/search"
+                aria-label="Voice search"
+                className="flex items-center justify-center shrink-0"
+                style={circleBtnStyle}
+              >
+                <Mic size={17} color="#111" />
+              </Link>
+              <Link
+                to="/visual-search"
+                aria-label="Visual AI search"
+                className="flex items-center justify-center shrink-0 relative"
+                style={circleBtnStyle}
+              >
+                <Camera size={17} color="#111" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
+              </Link>
+            </div>
+
+            {/* Vendor Portal Quick Access Bar (Visible if Vendor) */}
+            {vendorProfile?.verified && (
+              <div className="px-6 mt-3">
+                <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between shadow-md">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={16} className="text-white fill-white text-blue-600" />
+                    <span className="text-xs font-bold truncate">Vendor: {vendorProfile.storeName}</span>
+                  </div>
                   <button
                     onClick={() => setShowAddProductModal(true)}
-                    className="flex items-center gap-1 px-3 py-2 rounded-full bg-blue-600 text-white text-xs font-bold shadow-md hover:bg-blue-700 transition-transform active:scale-95 shrink-0"
+                    className="px-3 py-1 rounded-full bg-white text-blue-700 text-xs font-bold shadow hover:bg-gray-100 flex items-center gap-1 shrink-0"
                   >
-                    <PackagePlus size={14} /> Add Product
+                    <PackagePlus size={13} /> Add Product
                   </button>
-                )}
-                <Link to="/wishlist" aria-label="Wishlist" className="flex items-center justify-center shrink-0"
-                  style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)" }}>
-                  <Heart size={20} strokeWidth={2.2} color="#FF3B30" fill="#FF3B30" />
-                </Link>
-                {currentUser ? (
-                  <Link to="/profile" aria-label="Go to profile" className="flex items-center justify-center shrink-0 overflow-hidden relative"
-                    style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 8px 20px -12px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)", fontSize: 15, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>
-                    {currentUser.avatar ? (
-                      <img src={currentUser.avatar} alt={currentUser.name || "User"} className="w-full h-full object-cover" />
-                    ) : (
-                      (currentUser.name?.[0] || currentUser.email?.[0] || "U").toUpperCase()
-                    )}
-                  </Link>
-                ) : (
-                  <Link to="/signin" aria-label="Sign in" className="inline-flex items-center justify-center px-4 shrink-0"
-                    style={{ height: 42, borderRadius: 999, background: "#111111", color: "#FFFFFF", fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, boxShadow: "0 8px 20px -8px rgba(17,17,17,0.3)" }}>
-                    Sign In
-                  </Link>
-                )}
-              </div>
-            </div>
-            <p className="px-6 mt-1.5" style={{ fontSize: 14.5, color: "#666666", letterSpacing: -0.1 }}>
-              What are you looking for today?
-            </p>
-
-            <div className="px-6 mt-5">
-              <div 
-                onClick={() => navigate({ to: "/search" })}
-                className="flex items-center gap-2.5 pl-4 pr-2 w-full cursor-pointer select-none"
-                style={{ height: 54, borderRadius: 24, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -14px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.05)" }}
-              >
-                <Search size={18} strokeWidth={2} color="#8A8A8A" />
-                <div className="flex-1 text-left" style={{ fontSize: 15, color: "#8A8A8A", letterSpacing: -0.1 }}>
-                  Search products, brands...
-                </div>
-                <IconCircle><Mic size={16} strokeWidth={2} color="#111" /></IconCircle>
-                <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="relative z-10">
-                  <Link to="/visual-search" aria-label="Visual search">
-                    <IconCircle accent><Camera size={16} strokeWidth={2} color="#fff" /></IconCircle>
-                  </Link>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Dynamic Hero Banner (Smooth Cross-Fade Carousel across 9 Themes) */}
+            {/* Dynamic Hero Banner */}
             <div className="px-6 mt-6">
-              <div className="relative w-full overflow-hidden"
-                style={{ aspectRatio: "4 / 5", borderRadius: 24, background: "#F2EFE9", boxShadow: "0 24px 50px -24px rgba(17,17,17,0.20), 0 8px 20px -12px rgba(17,17,17,0.10), inset 0 0 0 1px rgba(17,17,17,0.03)" }}>
+              <div
+                className="relative w-full overflow-hidden"
+                style={{
+                  aspectRatio: "4 / 5",
+                  borderRadius: 24,
+                  background: "#F2EFE9",
+                  boxShadow:
+                    "0 24px 50px -24px rgba(17,17,17,0.20), 0 8px 20px -12px rgba(17,17,17,0.10), inset 0 0 0 1px rgba(17,17,17,0.03)",
+                }}
+              >
                 {HERO_THEMES.map((hero, idx) => {
                   const isActive = idx === heroIndex;
                   return (
@@ -349,24 +340,86 @@ function Home() {
                       style={{
                         opacity: isActive ? 1 : 0,
                         transform: isActive ? "scale(1)" : "scale(1.04)",
-                        zIndex: isActive ? 10 : 0
+                        zIndex: isActive ? 10 : 0,
                       }}
                     >
                       <img src={hero.img} alt={hero.title} className="w-full h-full object-cover" />
-                      <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(10,10,10,0.65) 100%)" }} />
+                      <div
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            "linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(10,10,10,0.65) 100%)",
+                        }}
+                      />
                       <div className="absolute left-5 top-5 pointer-events-auto">
-                        <div className="inline-flex items-center gap-1.5 px-2.5" style={{ height: 26, borderRadius: 999, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5)" }}>
+                        <div
+                          className="inline-flex items-center gap-1.5 px-2.5"
+                          style={{
+                            height: 26,
+                            borderRadius: 999,
+                            background: "rgba(255,255,255,0.85)",
+                            backdropFilter: "blur(16px)",
+                            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5)",
+                          }}
+                        >
                           <span style={{ width: 6, height: 6, borderRadius: 999, background: "#0F62FE" }} />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#111", letterSpacing: 0.2, textTransform: "uppercase" }}>{hero.tag}</span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: "#111",
+                              letterSpacing: 0.2,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {hero.tag}
+                          </span>
                         </div>
                       </div>
                       <div className="absolute left-5 right-5 bottom-5 flex items-end justify-between pointer-events-auto">
                         <div>
-                          <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.85)", letterSpacing: 0.4, textTransform: "uppercase", fontWeight: 600 }}>{hero.subtitle}</div>
-                          <div className="mt-1" style={{ fontSize: 24, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.7, color: "#fff", whiteSpace: "pre-line" }}>{hero.title}</div>
+                          <div
+                            style={{
+                              fontSize: 11.5,
+                              color: "rgba(255,255,255,0.85)",
+                              letterSpacing: 0.4,
+                              textTransform: "uppercase",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {hero.subtitle}
+                          </div>
+                          <div
+                            className="mt-1"
+                            style={{
+                              fontSize: 24,
+                              lineHeight: 1.1,
+                              fontWeight: 700,
+                              letterSpacing: -0.7,
+                              color: "#fff",
+                              whiteSpace: "pre-line",
+                            }}
+                          >
+                            {hero.title}
+                          </div>
                         </div>
-                        <Link to="/category/$slug" params={{ slug: hero.slug }} className="inline-flex items-center gap-1.5 px-4"
-                          style={{ height: 38, borderRadius: 999, background: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", fontSize: 13.5, fontWeight: 600, color: "#111", letterSpacing: -0.2, boxShadow: "0 6px 16px -6px rgba(17,17,17,0.3)" }}>
+                        <Link
+                          to="/category/$slug"
+                          params={{ slug: hero.slug }}
+                          className="inline-flex items-center gap-1.5 px-4"
+                          style={{
+                            height: 38,
+                            borderRadius: 999,
+                            background: "rgba(255,255,255,0.95)",
+                            backdropFilter: "blur(20px)",
+                            fontSize: 13.5,
+                            fontWeight: 600,
+                            color: "#111",
+                            letterSpacing: -0.2,
+                            boxShadow: "0 6px 16px -6px rgba(17,17,17,0.3)",
+                          }}
+                        >
                           Explore <ArrowUpRight size={14} strokeWidth={2.4} />
                         </Link>
                       </div>
@@ -376,97 +429,114 @@ function Home() {
               </div>
             </div>
 
-            {/* New Arrivals — 8 items daily rotation, no see all button */}
+            {/* New Arrivals Section */}
             <div className="flex items-end justify-between px-6 mt-8">
               <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>New Arrivals</h2>
             </div>
             <div className="flex gap-3 overflow-x-auto px-6 mt-4" style={{ scrollbarWidth: "none" }}>
-              {initialLoading
-                ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-                : newArrivals.map((p) => {
-                    const isLiked = wishlist.includes(p.id);
-                    const isAdded = addedToCartIds.includes(p.id);
-                    return (
-                      <Link to="/product/$id" params={{ id: p.cjId || p.id }} key={p.id} className="shrink-0 overflow-hidden block"
-                        style={{ width: 172, borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-                        <div className="relative" style={{ background: "#F7F7F5" }}>
-                          <img
-                            src={p.img}
-                            alt={p.name}
-                            loading="lazy"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
-                            }}
-                            className="w-full object-cover"
-                            style={{ aspectRatio: "1/1" }}
-                          />
-                          <button onClick={(e) => toggleWishlist(p.id, e)} aria-label="Wishlist"
-                            className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
-                            style={{ width: 30, height: 30, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}>
-                            <Heart size={14} strokeWidth={2.4} fill={isLiked ? "#FF3B30" : "none"} color={isLiked ? "#FF3B30" : "#111"} />
-                          </button>
-                        </div>
-                        <div className="px-3.5 py-3">
-                          <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.2, fontWeight: 600, textTransform: "uppercase" }}>{p.brand}</div>
-                          <div className="mt-0.5 truncate" style={{ fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>{p.name}</div>
-                          <div className="mt-1 flex items-center justify-between">
-                            <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{p.price}</span>
-                            <button onClick={(e) => addToCart(p, e)} aria-label="Add to cart"
-                              className="flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-                              style={{ width: 29, height: 29, borderRadius: 999, background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)", transition: "background-color 0.3s ease" }}>
-                              {isAdded ? <Check size={12} color="#fff" strokeWidth={3} /> : <ShoppingCart size={12} color="#111" strokeWidth={2.2} />}
-                            </button>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
+              {newArrivals.map((p) => {
+                const isLiked = wishlist.includes(p.id);
+                const isAdded = addedToCartIds.includes(p.id);
+                return (
+                  <Link
+                    to="/product/$id"
+                    params={{ id: p.cjId || p.id }}
+                    key={p.id}
+                    className="shrink-0 overflow-hidden block"
+                    style={{
+                      width: 172,
+                      borderRadius: 22,
+                      background: "#FFFFFF",
+                      boxShadow:
+                        "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)",
+                    }}
+                  >
+                    <div className="relative" style={{ background: "#F7F7F5" }}>
+                      <img
+                        src={p.img}
+                        alt={p.name}
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                        }}
+                        className="w-full object-cover"
+                        style={{ aspectRatio: "1/1" }}
+                      />
+                      <button
+                        onClick={(e) => toggleWishlist(p.id, e)}
+                        aria-label="Wishlist"
+                        className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 999,
+                          background: "rgba(255,255,255,0.9)",
+                          backdropFilter: "blur(16px)",
+                          boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
+                        }}
+                      >
+                        <Heart
+                          size={14}
+                          strokeWidth={2.4}
+                          fill={isLiked ? "#FF3B30" : "none"}
+                          color={isLiked ? "#FF3B30" : "#111"}
+                        />
+                      </button>
+                    </div>
+                    <div className="px-3.5 py-3">
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#8A8A8A",
+                          letterSpacing: 0.2,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {p.brand}
+                      </div>
+                      <div
+                        className="mt-0.5 truncate"
+                        style={{ fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}
+                      >
+                        {p.name}
+                      </div>
+                      <div className="mt-1 flex items-center justify-between">
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{p.price}</span>
+                        <button
+                          onClick={(e) => addToCart(p, e)}
+                          aria-label="Add to cart"
+                          className="flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                          style={{
+                            width: 29,
+                            height: 29,
+                            borderRadius: 999,
+                            background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)",
+                            backdropFilter: "blur(16px)",
+                            boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)",
+                            transition: "background-color 0.3s ease",
+                          }}
+                        >
+                          {isAdded ? (
+                            <Check size={12} color="#fff" strokeWidth={3} />
+                          ) : (
+                            <ShoppingCart size={12} color="#111" strokeWidth={2.2} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
 
-            {/* Recommended — no see all button */}
-            {!initialLoading && recommended.length > 0 && (
-              <>
-                <div className="flex items-end justify-between px-6 mt-8">
-                  <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>Recommended For You</h2>
-                </div>
-                <div className="grid grid-cols-2 gap-3 px-6 mt-4">
-                  {recommended.map((p) => {
-                    const isAdded = addedToCartIds.includes(p.id);
-                    return (
-                      <Link to="/product/$id" params={{ id: p.cjId || p.id }} key={p.id} className="overflow-hidden block"
-                        style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-                        <div className="relative">
-                          <img
-                            src={p.img}
-                            alt={p.name}
-                            loading="lazy"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
-                            }}
-                            className="w-full object-cover"
-                            style={{ aspectRatio: "4/5" }}
-                          />
-                          <button onClick={(e) => addToCart(p, e)} aria-label="Add to cart"
-                            className="absolute bottom-2.5 right-2.5 flex items-center justify-center transition-all z-10"
-                            style={{ width: 29, height: 29, borderRadius: 999, background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)", transition: "background-color 0.3s ease" }}>
-                            {isAdded ? <Check size={12} color="#fff" strokeWidth={3} /> : <ShoppingCart size={12} color="#111" strokeWidth={2.2} />}
-                          </button>
-                        </div>
-                        <div className="px-3.5 py-3">
-                          <div style={{ fontSize: 13.5, fontWeight: 600, color: "#111" }}>{p.name}</div>
-                          <div className="mt-0.5" style={{ fontSize: 13, color: "#666" }}>{p.price}</div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            {/* Trending — full infinite list with Category Dropdown Filter */}
+            {/* Trending / All Products — full list with Category Dropdown Filter */}
             <div className="flex items-end justify-between px-6 mt-8 relative">
-              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>All {activeCat} Products</h2>
-              <button 
+              <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>
+                {activeCat === "Random" || activeCat === "All" || activeCat === "All Products" ? "All Products" : `${activeCat} Products`}
+              </h2>
+              <button
                 onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
                 style={{ fontSize: 13, fontWeight: 600, color: "#0F62FE", letterSpacing: -0.2 }}
                 className="px-3 py-1 rounded-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 transition-colors"
@@ -499,147 +569,135 @@ function Home() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 px-6 mt-4">
-              {initialLoading
-                ? Array.from({ length: 6 }).map((_, i) => <SkeletonGridCard key={i} />)
-                : trending.map((p) => {
-                    const isLiked = wishlist.includes(p.id);
-                    const isAdded = addedToCartIds.includes(p.id);
-                    return (
-                      <Link to="/product/$id" params={{ id: p.cjId || p.id }} key={p.id} className="overflow-hidden block group active:scale-[0.98] transition-all"
-                        style={{ borderRadius: 22, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-                        <div className="relative overflow-hidden" style={{ background: "#F7F7F5" }}>
-                          <img
-                            src={p.img}
-                            alt={p.name}
-                            loading="lazy"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
-                            }}
-                            className="w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            style={{ aspectRatio: "1/1" }}
-                          />
-                          <button onClick={(e) => toggleWishlist(p.id, e)} aria-label="Wishlist"
-                            className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300"
-                            style={{ width: 30, height: 30, borderRadius: 999, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}>
-                            <Heart size={14} strokeWidth={2.4} fill={isLiked ? "#FF3B30" : "none"} color={isLiked ? "#FF3B30" : "#111"} />
-                          </button>
-                        </div>
-                        <div className="px-3.5 py-3">
-                          <div style={{ fontSize: 10, color: "#8A8A8A", letterSpacing: 0.2, fontWeight: 700, textTransform: "uppercase" }}>{p.brand}</div>
-                          <div className="mt-0.5 truncate" style={{ fontSize: 13.5, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}>{p.name}</div>
-                          <div className="mt-1 flex items-center justify-between gap-1">
-                            <span style={{ fontSize: 13.5, fontWeight: 700, color: "#111" }}>{p.price}</span>
-                            {p.vendorName && (
-                              <span className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5 ml-auto mr-1 truncate">
-                                By {p.vendorName} <CheckCircle2 className="w-3 h-3 fill-blue-600 text-white shrink-0" />
-                              </span>
-                            )}
-                            <button onClick={(e) => addToCart(p, e)} aria-label="Add to cart"
-                              className="flex items-center justify-center transition-all hover:scale-105 active:scale-95 shrink-0"
-                              style={{ width: 29, height: 29, borderRadius: 999, background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)", backdropFilter: "blur(16px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)", transition: "background-color 0.3s ease" }}>
-                              {isAdded ? <Check size={12} color="#fff" strokeWidth={3} /> : <ShoppingCart size={12} color="#111" strokeWidth={2.2} />}
-                            </button>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
+              {trending.map((p) => {
+                const isLiked = wishlist.includes(p.id);
+                const isAdded = addedToCartIds.includes(p.id);
+                return (
+                  <Link
+                    to="/product/$id"
+                    params={{ id: p.cjId || p.id }}
+                    key={p.id}
+                    className="overflow-hidden block group active:scale-[0.98] transition-all"
+                    style={{
+                      borderRadius: 22,
+                      background: "#FFFFFF",
+                      boxShadow:
+                        "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)",
+                    }}
+                  >
+                    <div className="relative overflow-hidden" style={{ background: "#F7F7F5" }}>
+                      <img
+                        src={p.img}
+                        alt={p.name}
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                        }}
+                        className="w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        style={{ aspectRatio: "1/1" }}
+                      />
+                      <button
+                        onClick={(e) => toggleWishlist(p.id, e)}
+                        aria-label="Wishlist"
+                        className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: 999,
+                          background: "rgba(255,255,255,0.9)",
+                          backdropFilter: "blur(16px)",
+                          boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
+                        }}
+                      >
+                        <Heart
+                          size={14}
+                          strokeWidth={2.4}
+                          fill={isLiked ? "#FF3B30" : "none"}
+                          color={isLiked ? "#FF3B30" : "#111"}
+                        />
+                      </button>
+                    </div>
+                    <div className="px-3.5 py-3">
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#8A8A8A",
+                          letterSpacing: 0.2,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {p.brand}
+                      </div>
+                      <div
+                        className="mt-0.5 truncate"
+                        style={{ fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}
+                      >
+                        {p.name}
+                      </div>
+                      <div className="mt-1 flex items-center justify-between">
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{p.price}</span>
+                        <button
+                          onClick={(e) => addToCart(p, e)}
+                          aria-label="Add to cart"
+                          className="flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                          style={{
+                            width: 29,
+                            height: 29,
+                            borderRadius: 999,
+                            background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)",
+                            backdropFilter: "blur(16px)",
+                            boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)",
+                            transition: "background-color 0.3s ease",
+                          }}
+                        >
+                          {isAdded ? (
+                            <Check size={12} color="#fff" strokeWidth={3} />
+                          ) : (
+                            <ShoppingCart size={12} color="#111" strokeWidth={2.2} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
 
-            {/* Sentinel for infinite scroll */}
-            <div ref={sentinelRef} className="flex justify-center py-6">
-              {loading && hasMore && <Loader2 size={24} className="animate-spin text-neutral-400" />}
-            </div>
-
-            {/* Brands */}
-            <SectionHeader title="Popular Brands" action="Explore" />
-            <div className="flex gap-2.5 overflow-x-auto px-6 mt-4" style={{ scrollbarWidth: "none" }}>
-              {["Aura", "Nordic", "Luxe", "Verve", "Prism", "Zenith"].map((b) => (
-                <div key={b} className="shrink-0 flex items-center justify-center"
-                  style={{ width: 92, height: 68, borderRadius: 20, background: "#FFFFFF", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 10px 24px -16px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)", fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: -0.3 }}>
-                  {b}
-                </div>
-              ))}
-            </div>
-
-            {/* Daily Curated */}
-            <div className="px-6 mt-8">
-              <div className="relative w-full overflow-hidden"
-                style={{ aspectRatio: "16/10", borderRadius: 24, boxShadow: "0 24px 50px -24px rgba(17,17,17,0.22), 0 8px 20px -12px rgba(17,17,17,0.1), inset 0 0 0 1px rgba(17,17,17,0.03)" }}>
-                <img src={curated} alt="Curated lifestyle" loading="lazy" className="w-full h-full object-cover" />
-                <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(20,15,10,0.4) 100%)" }} />
-                <div className="absolute left-5 right-5 bottom-5 flex items-end justify-between">
-                  <div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.85)", letterSpacing: 0.4, textTransform: "uppercase", fontWeight: 600 }}>Daily Curated</div>
-                    <div className="mt-1" style={{ fontSize: 20, lineHeight: 1.1, fontWeight: 700, letterSpacing: -0.5, color: "#fff", maxWidth: 200 }}>Picks for a<br />quiet weekend</div>
-                  </div>
-                  <button className="inline-flex items-center gap-1.5 px-3.5"
-                    style={{ height: 34, borderRadius: 999, background: "rgba(255,255,255,0.95)", fontSize: 12.5, fontWeight: 600, color: "#111", letterSpacing: -0.2, boxShadow: "0 6px 16px -6px rgba(17,17,17,0.3)" }}>
-                    View Collection
-                  </button>
-                </div>
-              </div>
+            {/* Infinite Scroll Sentinel */}
+            <div ref={sentinelRef} className="py-6 flex justify-center">
+              {loading && <Loader2 size={24} className="animate-spin text-blue-600" />}
             </div>
           </div>
         </div>
 
-        {currentUser && vendorProfile && (
+        {/* Vendor Add Product Modal */}
+        {currentUser && vendorProfile?.verified && (
           <VendorAddProductModal
             isOpen={showAddProductModal}
             onClose={() => setShowAddProductModal(false)}
-            onSuccess={() => setVendorProducts(getVendorProducts())}
+            onSuccess={() => {
+              setVendorProducts(getVendorProducts());
+            }}
             vendorName={vendorProfile.storeName || currentUser.name || "Vendor"}
             vendorId={vendorProfile.vendorId || "v-1"}
           />
         )}
 
-        <BottomNav active="home" variant="home" />
+        <BottomNav active="home" />
         <HomeIndicator />
       </>
     </PhoneFrame>
   );
 }
 
-function SkeletonCard() {
-  return (
-    <div className="shrink-0 overflow-hidden" style={{ width: 172, borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-      <div className="animate-pulse" style={{ aspectRatio: "1/1", background: "#F3F3F3", borderRadius: "0 0 0 0" }} />
-      <div className="px-3.5 py-3 space-y-2">
-        <div className="animate-pulse h-2.5 rounded-full bg-gray-200 w-1/2" />
-        <div className="animate-pulse h-3 rounded-full bg-gray-200 w-5/6" />
-        <div className="animate-pulse h-3 rounded-full bg-gray-200 w-1/3" />
-      </div>
-    </div>
-  );
-}
-
-function SkeletonGridCard() {
-  return (
-    <div className="overflow-hidden" style={{ borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-      <div className="animate-pulse" style={{ aspectRatio: "1/1", background: "#F3F3F3" }} />
-      <div className="px-3.5 py-3 space-y-2">
-        <div className="animate-pulse h-2 rounded-full bg-gray-200 w-1/2" />
-        <div className="animate-pulse h-3 rounded-full bg-gray-200 w-5/6" />
-        <div className="animate-pulse h-3 rounded-full bg-gray-200 w-1/3" />
-      </div>
-    </div>
-  );
-}
-
-function SectionHeader({ title, action }: { title: string; action: string }) {
-  return (
-    <div className="flex items-end justify-between px-6 mt-8">
-      <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>{title}</h2>
-      <button style={{ fontSize: 13, fontWeight: 600, color: "#0F62FE", letterSpacing: -0.2 }}>{action}</button>
-    </div>
-  );
-}
-
-function IconCircle({ children, accent }: { children: React.ReactNode; accent?: boolean }) {
-  return (
-    <div className="flex items-center justify-center shrink-0"
-      style={{ width: 38, height: 38, borderRadius: 999, background: accent ? "#111111" : "rgba(255,255,255,0.9)", boxShadow: accent ? "0 6px 14px -6px rgba(17,17,17,0.4), inset 0 1px 0 rgba(255,255,255,0.1)" : "inset 0 0 0 1px rgba(17,17,17,0.06), 0 2px 6px -2px rgba(17,17,17,0.08)" }}>
-      {children}
-    </div>
-  );
+function circleBtnStyle() {
+  return {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    background: "#F7F7F5",
+    boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
+  } as const;
 }

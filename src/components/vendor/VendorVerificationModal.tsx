@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, CheckCircle2, ShieldCheck, Upload, AlertCircle, Sparkles, Camera, CreditCard, Building2, Phone } from "lucide-react";
+import { X, CheckCircle2, ShieldCheck, Upload, AlertCircle, Sparkles, Camera, CreditCard, Building2, Phone, Zap } from "lucide-react";
 import { validatePassportPhoto, saveVendorProfile, VendorProfile, validateGhanaCardNumber, validateGhanaPhone } from "@/lib/vendor";
 
 interface Props {
@@ -21,6 +21,7 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess, userEmail,
   const [isValidating, setIsValidating] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isPhotoValid, setIsPhotoValid] = useState(false);
+  const [agreeExpressDelivery, setAgreeExpressDelivery] = useState(false);
 
   if (!isOpen) return null;
 
@@ -106,6 +107,13 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess, userEmail,
       return;
     }
 
+    if (!agreeExpressDelivery) {
+      const msg = "You must accept the mandatory 1-2 day local Ghana delivery agreement to become a vendor.";
+      setValidationError(msg);
+      import("sonner").then(({ toast }) => toast.error(msg));
+      return;
+    }
+
     const profile: VendorProfile = {
       storeName: storeName.trim(),
       phone: phone.trim(),
@@ -119,7 +127,7 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess, userEmail,
     };
 
     saveVendorProfile(profile);
-    import("sonner").then(({ toast }) => toast.success("Congratulations! You are officially verified as a Trends Vendor!"));
+    import("sonner").then(({ toast }) => toast.success("Congratulations! You are officially verified as a Trends 1-2 Day Express Vendor!"));
     onSuccess();
     onClose();
   };
@@ -143,7 +151,7 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess, userEmail,
               <h2 className="text-lg font-bold text-gray-900 leading-tight flex items-center gap-1.5">
                 Become a Vendor <CheckCircle2 className="w-4 h-4 text-blue-600 fill-blue-600 text-white" />
               </h2>
-              <p className="text-xs text-gray-500">Official Safety & Legitimacy Check</p>
+              <p className="text-xs text-gray-500">Official Safety & Fast 1-2 Day Delivery Check</p>
             </div>
           </div>
           <button
@@ -160,7 +168,7 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess, userEmail,
           <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-100 flex items-start gap-3">
             <Sparkles className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <p className="text-xs text-blue-900 leading-relaxed font-medium">
-              Anti-Scam Security: All vendors must submit official Ghana Card details & verified facial photo to sell on Trends.
+              Anti-Scam Security: All Ghana vendors undergo official NIA Ghana Card checks & commit to <strong>1-2 day express delivery</strong> across Ghana.
             </p>
           </div>
 
@@ -279,6 +287,21 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess, userEmail,
               )}
             </div>
 
+            {/* Mandatory 1-2 Day Express Local Delivery Agreement */}
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="agreeExpress"
+                checked={agreeExpressDelivery}
+                onChange={(e) => { setAgreeExpressDelivery(e.target.checked); setValidationError(null); }}
+                className="w-4 h-4 mt-0.5 rounded border-amber-400 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+                required
+              />
+              <label htmlFor="agreeExpress" className="text-xs text-amber-900 leading-relaxed font-semibold cursor-pointer">
+                ⚡ <strong>1–2 Day Express Delivery Agreement:</strong> As a local Ghana vendor, I promise to dispatch and deliver all customer orders within <strong>1 to 2 business days</strong> across Ghana.
+              </label>
+            </div>
+
             {validationError && (
               <div className="p-3 rounded-xl bg-red-50 border border-red-100 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
@@ -291,10 +314,10 @@ export function VendorVerificationModal({ isOpen, onClose, onSuccess, userEmail,
           <div className="pt-3">
             <button
               type="submit"
-              disabled={!isPhotoValid || !ghanaCardPhoto}
+              disabled={!isPhotoValid || !ghanaCardPhoto || !agreeExpressDelivery}
               className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-sm shadow-lg shadow-blue-600/25 transition-all flex items-center justify-center gap-2"
             >
-              <CheckCircle2 className="w-4 h-4" /> Become Verified Vendor
+              <Zap className="w-4 h-4 fill-white" /> Become 1-2 Day Express Vendor
             </button>
           </div>
         </form>
