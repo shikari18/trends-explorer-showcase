@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Mic, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus, Zap, Store, User } from "lucide-react";
+import { Search, Mic, Camera, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus, Zap, Store, User } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import heroSummer from "@/assets/home-hero-summer.jpg";
@@ -268,60 +268,102 @@ function Home() {
           style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
         >
           <div className="pb-36">
-            {/* Top Search Header with Profile Icon on Top Right */}
-            <div className="px-6 pt-5 flex items-center gap-3">
-              <Link
-                to="/search"
-                className="flex-1 flex items-center gap-2.5 px-4"
-                style={{
-                  height: 48,
-                  borderRadius: 999,
-                  background: "#F7F7F5",
-                  boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
-                }}
-              >
-                <Search size={17} color="#8A8A8A" />
-                <span style={{ fontSize: 14, color: "#8A8A8A", fontWeight: 400 }}>
-                  Search 45,000+ products & brands
-                </span>
-              </Link>
-              <Link
-                to="/profile"
-                aria-label="Profile"
-                className="flex items-center justify-center shrink-0 overflow-hidden"
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 999,
-                  background: "#F7F7F5",
-                  boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
-                }}
-              >
-                {currentUser?.avatar ? (
-                  <img src={currentUser.avatar} alt="User Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <User size={19} color="#111" />
-                )}
-              </Link>
-            </div>
-
-            {/* Vendor Portal Quick Access Bar (Visible if Vendor) */}
-            {vendorProfile?.verified && (
-              <div className="px-6 mt-3">
-                <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between shadow-md">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-white fill-white text-blue-600" />
-                    <span className="text-xs font-bold truncate">Vendor: {vendorProfile.storeName}</span>
+            {/* Top Header Section (Brought down with generous top padding) */}
+            <div className="px-6 pt-7">
+              {/* Top Row: Subtitle tag + Right Actions (Add Product, Wishlist, Profile Avatar) */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <div style={{ fontSize: 13, color: "#8A8A8A", fontWeight: 500 }}>
+                    {vendorProfile?.verified ? "Verified Vendor Portal" : "Welcome Back"}
                   </div>
-                  <button
-                    onClick={() => setShowAddProductModal(true)}
-                    className="px-3 py-1 rounded-full bg-white text-blue-700 text-xs font-bold shadow hover:bg-gray-100 flex items-center gap-1 shrink-0"
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111111", letterSpacing: -0.6, textTransform: "uppercase" }}>
+                      {vendorProfile?.verified ? (vendorProfile.storeName || "SHIKARI") : (currentUser?.name || "SHIKARI")}
+                    </h1>
+                    {vendorProfile?.verified && (
+                      <CheckCircle2 size={18} className="text-blue-600 fill-blue-600 text-white shrink-0" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Action Icons Row */}
+                <div className="flex items-center gap-2 shrink-0 pt-1">
+                  {/* Add Product Button if Verified Vendor */}
+                  {vendorProfile?.verified && (
+                    <button
+                      onClick={() => setShowAddProductModal(true)}
+                      className="px-3.5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/30 flex items-center gap-1.5 active:scale-95 transition-transform"
+                    >
+                      <PackagePlus size={14} /> Add Product
+                    </button>
+                  )}
+
+                  {/* Wishlist Heart Button */}
+                  <Link
+                    to="/wishlist"
+                    aria-label="Wishlist"
+                    className="w-10 h-10 rounded-full bg-gray-100/80 hover:bg-gray-200 flex items-center justify-center transition-colors relative"
                   >
-                    <PackagePlus size={13} /> Add Product
-                  </button>
+                    <Heart size={18} fill="#FF3B30" color="#FF3B30" />
+                  </Link>
+
+                  {/* Profile Avatar Button */}
+                  <Link
+                    to="/profile"
+                    aria-label="Profile"
+                    className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shadow-sm shrink-0"
+                  >
+                    {currentUser?.avatar ? (
+                      <img src={currentUser.avatar} alt="User Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-900 text-white flex items-center justify-center font-bold text-xs">
+                        {(currentUser?.name || "U")[0].toUpperCase()}
+                      </div>
+                    )}
+                  </Link>
                 </div>
               </div>
-            )}
+
+              {/* Subtitle Search Prompt */}
+              <p className="mt-1.5 text-xs text-gray-500 font-medium">
+                What are you looking for today?
+              </p>
+
+              {/* Search Bar Row */}
+              <div className="mt-4 flex items-center gap-2.5">
+                <Link
+                  to="/search"
+                  className="flex-1 flex items-center gap-2.5 px-4"
+                  style={{
+                    height: 48,
+                    borderRadius: 999,
+                    background: "#F7F7F5",
+                    boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
+                  }}
+                >
+                  <Search size={17} color="#8A8A8A" />
+                  <span style={{ fontSize: 13.5, color: "#8A8A8A", fontWeight: 400 }}>
+                    Search products, brands...
+                  </span>
+                </Link>
+
+                <Link
+                  to="/search"
+                  aria-label="Voice search"
+                  className="w-10 h-10 rounded-full bg-[#F7F7F5] flex items-center justify-center border border-gray-200/60 shrink-0"
+                >
+                  <Mic size={17} color="#111" />
+                </Link>
+
+                <Link
+                  to="/visual-search"
+                  aria-label="Visual camera search"
+                  className="w-10 h-10 rounded-full bg-black flex items-center justify-center shrink-0 shadow-md"
+                >
+                  <Camera size={17} color="#FFF" />
+                </Link>
+              </div>
+            </div>
 
             {/* Dynamic Hero Banner */}
             <div className="px-6 mt-6">
