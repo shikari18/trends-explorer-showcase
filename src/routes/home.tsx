@@ -354,14 +354,6 @@ function Home() {
                 >
                   <Mic size={17} color="#111" />
                 </Link>
-
-                <Link
-                  to="/visual-search"
-                  aria-label="Visual camera search"
-                  className="w-10 h-10 rounded-full bg-black flex items-center justify-center shrink-0 shadow-md"
-                >
-                  <Camera size={17} color="#FFF" />
-                </Link>
               </div>
             </div>
 
