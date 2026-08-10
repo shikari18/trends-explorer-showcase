@@ -59,7 +59,7 @@ function AdminDashboard() {
     }
   }, []);
 
-  const totalGoal = 60000;
+  const totalGoal = 100000;
   const progressPct = Math.min(100, parseFloat(((totalCatalogCount / totalGoal) * 100).toFixed(1)));
 
   // Filter real users
@@ -236,7 +236,7 @@ function AdminDashboard() {
 
               <div className="p-6 rounded-3xl bg-white border border-gray-200/80 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Target Goal (60K)</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Target Goal (100K)</span>
                   <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
                     <Layers size={20} />
                   </div>
@@ -254,18 +254,18 @@ function AdminDashboard() {
             <div className="p-7 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
               <div className="space-y-3 relative z-10 max-w-xl">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold border border-white/30">
-                  <RefreshCw size={12} className="animate-spin text-white" /> Parallel Sourcing Engine Active
+                  <RefreshCw size={12} className="animate-spin text-white" /> Turbo Sourcing Engine Active
                 </div>
-                <h2 className="text-2xl font-black tracking-tight">Continuous Catalog Target: 60,000 Items</h2>
+                <h2 className="text-2xl font-black tracking-tight">Continuous Catalog Target: 100,000 Items</h2>
                 <p className="text-xs text-blue-100 leading-relaxed font-medium">
-                  Products are dynamically populated into local cache across Electronics, Computers, Apparel, Home & Furniture, and Accessories with balanced quotas.
+                  Products are dynamically populated into local cache across Electronics, Computers, Apparel, Home & Furniture, and Accessories.
                 </p>
               </div>
 
               <div className="bg-white/10 backdrop-blur-xl p-5 rounded-2xl border border-white/20 shrink-0 text-center min-w-[210px] relative z-10 shadow-lg">
                 <div className="text-xs font-bold text-blue-200 uppercase tracking-wider">Total Catalog Count</div>
                 <div className="text-3xl font-black text-white mt-1">{totalCatalogCount.toLocaleString()}</div>
-                <div className="text-xs font-bold text-emerald-300 mt-1">Goal: 60,000 Products</div>
+                <div className="text-xs font-bold text-emerald-300 mt-1">Goal: 100,000 Products</div>
               </div>
             </div>
 
