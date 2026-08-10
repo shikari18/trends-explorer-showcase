@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Mic, Camera, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus } from "lucide-react";
+import { Search, Mic, Sparkles, Heart, Filter, SlidersHorizontal, ArrowUpRight, Flame, ShieldCheck, ChevronRight, Loader2, Check, ShoppingCart, RefreshCw, Layers, CheckCircle2, PackagePlus, Zap, Store } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import heroSummer from "@/assets/home-hero-summer.jpg";
@@ -46,7 +46,7 @@ function Home() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
-  // Auto-cycle hero banner theme every 4 seconds with smooth cross-fade animation
+  // Auto-cycle hero banner theme every 4 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       setHeroIndex((prev) => (prev + 1) % 9);
@@ -110,7 +110,11 @@ function Home() {
       let newItems: CJProduct[];
       let more: boolean;
 
-      if (cat === "Random" || cat === "All") {
+      if (cat.includes("Express") || cat.includes("1-2")) {
+        // Express 1-2 Days category strictly loads vendor uploaded products
+        newItems = [];
+        more = false;
+      } else if (cat === "Random" || cat === "All") {
         const allCatKeys = [
           "Consumer Electronics",
           "Home, Garden & Furniture",
@@ -222,24 +226,23 @@ function Home() {
   const mappedVendorProducts = (Array.isArray(vendorProducts) ? vendorProducts : []).map((vp) => ({
     id: vp.id || `v-${Math.random()}`,
     cjId: vp.id || `v-${Math.random()}`,
-    brand: vp.vendorName || "Vendor Store",
+    brand: vp.vendorName || "Ghana Vendor Store",
     name: vp.title || "Vendor Product",
     price: `₵${(Number(vp.price || 10) * 15).toLocaleString()}`,
     rawPrice: Number(vp.price || 10) * 15,
     img: (Array.isArray(vp.images) && vp.images[0]) || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80",
     rating: 5.0,
     reviews: "1",
-    vendorName: vp.vendorName || "Vendor",
+    vendorName: vp.vendorName || "Ghana Vendor",
     vendorVerified: true,
   }));
 
+  const isExpressSelected = activeCat.includes("Express") || activeCat.includes("1-2");
   const pool = products.length > 0 ? products : DEFAULT_FALLBACK_PRODUCTS;
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
   const newArrivalsOffset = (dayOfYear * 8) % Math.max(1, pool.length - 8);
   const newArrivals = [...mappedVendorProducts, ...pool.slice(newArrivalsOffset, newArrivalsOffset + 8)];
-  const recommendedOffset = (dayOfYear * 4 + 3) % Math.max(1, pool.length - 4);
-  const recommended = pool.slice(recommendedOffset, recommendedOffset + 4);
-  const trending = [...mappedVendorProducts, ...pool];
+  const trending = isExpressSelected ? mappedVendorProducts : [...mappedVendorProducts, ...pool];
 
   // 9 Hero Banner Themes
   const HERO_THEMES = [
@@ -265,7 +268,7 @@ function Home() {
           style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
         >
           <div className="pb-36">
-            {/* Search Header */}
+            {/* Search Header (Restored Clean Search Bar without camera) */}
             <div className="px-6 pt-5 flex items-center gap-3">
               <Link
                 to="/search"
@@ -279,7 +282,7 @@ function Home() {
               >
                 <Search size={17} color="#8A8A8A" />
                 <span style={{ fontSize: 14, color: "#8A8A8A", fontWeight: 400 }}>
-                  Search 42,000+ products & brands
+                  Search 45,000+ products & brands
                 </span>
               </Link>
               <Link
@@ -289,15 +292,6 @@ function Home() {
                 style={circleBtnStyle}
               >
                 <Mic size={17} color="#111" />
-              </Link>
-              <Link
-                to="/visual-search"
-                aria-label="Visual AI search"
-                className="flex items-center justify-center shrink-0 relative"
-                style={circleBtnStyle}
-              >
-                <Camera size={17} color="#111" />
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping" />
               </Link>
             </div>
 
@@ -534,7 +528,7 @@ function Home() {
             {/* Trending / All Products — full list with Category Dropdown Filter */}
             <div className="flex items-end justify-between px-6 mt-8 relative">
               <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>
-                {activeCat === "Random" || activeCat === "All" || activeCat === "All Products" ? "All Products" : `${activeCat} Products`}
+                {isExpressSelected ? "⚡ Ghana Vendor Express (1-2 Days)" : (activeCat === "Random" || activeCat === "All" || activeCat === "All Products" ? "All Products" : `${activeCat} Products`)}
               </h2>
               <button
                 onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
@@ -568,102 +562,129 @@ function Home() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 px-6 mt-4">
-              {trending.map((p) => {
-                const isLiked = wishlist.includes(p.id);
-                const isAdded = addedToCartIds.includes(p.id);
-                return (
-                  <Link
-                    to="/product/$id"
-                    params={{ id: p.cjId || p.id }}
-                    key={p.id}
-                    className="overflow-hidden block group active:scale-[0.98] transition-all"
-                    style={{
-                      borderRadius: 22,
-                      background: "#FFFFFF",
-                      boxShadow:
-                        "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)",
-                    }}
+            {/* Product Grid or Express Empty State */}
+            {isExpressSelected && trending.length === 0 ? (
+              <div className="mx-6 mt-4 p-8 text-center bg-amber-50/60 dark:bg-amber-950/30 rounded-3xl border border-amber-200/60 dark:border-amber-900/40">
+                <div className="w-14 h-14 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto mb-3 text-2xl font-bold">
+                  ⚡
+                </div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">No Local Express Vendor Products Yet</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 max-w-xs mx-auto leading-relaxed font-medium">
+                  Verified Ghana vendors have not uploaded products yet. Vendors can go to Profile & Settings to upload products for 1–2 day express delivery across Ghana!
+                </p>
+                <div className="mt-4 flex justify-center gap-2">
+                  <button
+                    onClick={() => setActiveCat("All")}
+                    className="px-4 py-2 rounded-full bg-blue-600 text-white text-xs font-bold shadow hover:bg-blue-700 transition-colors"
                   >
-                    <div className="relative overflow-hidden" style={{ background: "#F7F7F5" }}>
-                      <img
-                        src={p.img}
-                        alt={p.name}
-                        loading="lazy"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
-                        }}
-                        className="w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        style={{ aspectRatio: "1/1" }}
-                      />
-                      <button
-                        onClick={(e) => toggleWishlist(p.id, e)}
-                        aria-label="Wishlist"
-                        className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 999,
-                          background: "rgba(255,255,255,0.9)",
-                          backdropFilter: "blur(16px)",
-                          boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
-                        }}
-                      >
-                        <Heart
-                          size={14}
-                          strokeWidth={2.4}
-                          fill={isLiked ? "#FF3B30" : "none"}
-                          color={isLiked ? "#FF3B30" : "#111"}
+                    View All Products
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 px-6 mt-4">
+                {trending.map((p) => {
+                  const isLiked = wishlist.includes(p.id);
+                  const isAdded = addedToCartIds.includes(p.id);
+                  const isVendorItem = p.vendorVerified || p.id?.startsWith("v-");
+                  return (
+                    <Link
+                      to="/product/$id"
+                      params={{ id: p.cjId || p.id }}
+                      key={p.id}
+                      className="overflow-hidden block group active:scale-[0.98] transition-all relative"
+                      style={{
+                        borderRadius: 22,
+                        background: "#FFFFFF",
+                        boxShadow:
+                          "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)",
+                      }}
+                    >
+                      <div className="relative overflow-hidden" style={{ background: "#F7F7F5" }}>
+                        <img
+                          src={p.img}
+                          alt={p.name}
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80";
+                          }}
+                          className="w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          style={{ aspectRatio: "1/1" }}
                         />
-                      </button>
-                    </div>
-                    <div className="px-3.5 py-3">
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: "#8A8A8A",
-                          letterSpacing: 0.2,
-                          fontWeight: 600,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {p.brand}
-                      </div>
-                      <div
-                        className="mt-0.5 truncate"
-                        style={{ fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}
-                      >
-                        {p.name}
-                      </div>
-                      <div className="mt-1 flex items-center justify-between">
-                        <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{p.price}</span>
+                        {isVendorItem && (
+                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold shadow-md flex items-center gap-0.5 z-10">
+                            <Zap size={10} className="fill-white" /> 1-2 Days
+                          </div>
+                        )}
                         <button
-                          onClick={(e) => addToCart(p, e)}
-                          aria-label="Add to cart"
-                          className="flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                          onClick={(e) => toggleWishlist(p.id, e)}
+                          aria-label="Wishlist"
+                          className="absolute top-2.5 right-2.5 flex items-center justify-center transition-all duration-300 z-10"
                           style={{
-                            width: 29,
-                            height: 29,
+                            width: 30,
+                            height: 30,
                             borderRadius: 999,
-                            background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)",
+                            background: "rgba(255,255,255,0.9)",
                             backdropFilter: "blur(16px)",
-                            boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)",
-                            transition: "background-color 0.3s ease",
+                            boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)",
                           }}
                         >
-                          {isAdded ? (
-                            <Check size={12} color="#fff" strokeWidth={3} />
-                          ) : (
-                            <ShoppingCart size={12} color="#111" strokeWidth={2.2} />
-                          )}
+                          <Heart
+                            size={14}
+                            strokeWidth={2.4}
+                            fill={isLiked ? "#FF3B30" : "none"}
+                            color={isLiked ? "#FF3B30" : "#111"}
+                          />
                         </button>
                       </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+                      <div className="px-3.5 py-3">
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#8A8A8A",
+                            letterSpacing: 0.2,
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {p.brand}
+                        </div>
+                        <div
+                          className="mt-0.5 truncate"
+                          style={{ fontSize: 14, fontWeight: 600, color: "#111", letterSpacing: -0.2 }}
+                        >
+                          {p.name}
+                        </div>
+                        <div className="mt-1 flex items-center justify-between">
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{p.price}</span>
+                          <button
+                            onClick={(e) => addToCart(p, e)}
+                            aria-label="Add to cart"
+                            className="flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                            style={{
+                              width: 29,
+                              height: 29,
+                              borderRadius: 999,
+                              background: isAdded ? "#34C759" : "rgba(255,255,255,0.9)",
+                              backdropFilter: "blur(16px)",
+                              boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.08)",
+                              transition: "background-color 0.3s ease",
+                            }}
+                          >
+                            {isAdded ? (
+                              <Check size={12} color="#fff" strokeWidth={3} />
+                            ) : (
+                              <ShoppingCart size={12} color="#111" strokeWidth={2.2} />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Infinite Scroll Sentinel */}
             <div ref={sentinelRef} className="py-6 flex justify-center">
