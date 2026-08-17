@@ -2,10 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import {
   ArrowLeft, ShieldCheck, MapPin, Truck, Package, Check,
-  Loader2, User, LogIn, X
+  Loader2, User, LogIn, X, Sparkles, Mail
 } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { serverPlaceCJOrder } from "@/lib/cjApi";
+import { syncUserVendorAccount } from "@/lib/vendor";
 
 export const Route = createFileRoute("/checkout")({
   component: Checkout,
@@ -13,19 +14,29 @@ export const Route = createFileRoute("/checkout")({
 });
 
 // ---------------------------------------------------------------------------
-// Minimal Google Identity Services sign-in
-// Requires VITE_GOOGLE_CLIENT_ID env variable set in Render
+// Google Identity Services sign-in
 // ---------------------------------------------------------------------------
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string || "";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string || "1016880306656-vit95sbsvf2ptld2u14m9d4gr9tv056t.apps.googleusercontent.com";
 
 function loadGsiScript(): Promise<void> {
   return new Promise((resolve) => {
-    if ((window as any).google?.accounts?.id) { resolve(); return; }
+    if (typeof window === "undefined") { resolve(); return; }
+    if ((window as any).google?.accounts?.id || (window as any).google?.accounts?.oauth2) {
+      resolve();
+      return;
+    }
+    const existing = document.getElementById("gsi-client-script");
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      return;
+    }
     const script = document.createElement("script");
+    script.id = "gsi-client-script";
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
+    script.onerror = () => resolve();
     document.head.appendChild(script);
   });
 }
@@ -33,14 +44,24 @@ function loadGsiScript(): Promise<void> {
 interface GoogleUser {
   name: string;
   email: string;
-  picture: string;
-  sub: string;
+  picture?: string;
+  sub?: string;
 }
 
 function parseJwt(token: string): GoogleUser | null {
   try {
-    return JSON.parse(atob(token.split(".")[1]));
-  } catch { return null; }
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +71,10 @@ function Checkout() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
-  const [gsiReady, setGsiReady] = useState(false);
+  const [showManualGoogleForm, setShowManualGoogleForm] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualName, setManualName] = useState("");
   const [placing, setPlacing] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderError, setOrderError] = useState("");
@@ -71,59 +95,157 @@ function Checkout() {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("cart");
       setCartItems(saved ? JSON.parse(saved) : []);
-      // Restore signed-in user
-      const u = localStorage.getItem("gUser");
-      if (u) {
-        const parsed = JSON.parse(u) as GoogleUser;
-        setGoogleUser(parsed);
-        setForm((f) => ({ ...f, name: parsed.name }));
+      
+      // Restore signed-in user from 'user' or 'gUser'
+      const rawUser = localStorage.getItem("user") || localStorage.getItem("gUser");
+      if (rawUser) {
+        try {
+          const parsed = JSON.parse(rawUser);
+          const gu: GoogleUser = {
+            name: parsed.name || (parsed.email ? parsed.email.split("@")[0] : "Customer"),
+            email: parsed.email || "",
+            picture: parsed.avatar || parsed.picture || "",
+            sub: parsed.id || parsed.sub || "u-1",
+          };
+          setGoogleUser(gu);
+          setForm((f) => ({ ...f, name: f.name || gu.name }));
+        } catch {}
       }
+
+      loadGsiScript();
     }
   }, []);
 
-  // Initialise Google Sign-In
-  const initGsi = async () => {
-    if (!GOOGLE_CLIENT_ID) return;
-    await loadGsiScript();
-    const google = (window as any).google;
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (resp: { credential: string }) => {
-        const user = parseJwt(resp.credential);
-        if (user) {
-          setGoogleUser(user);
-          localStorage.setItem("gUser", JSON.stringify(user));
-          setForm((f) => ({ ...f, name: user.name }));
-          setShowSignInModal(false);
-        }
-      },
-    });
-    setGsiReady(true);
+  const completeSignIn = (userData: GoogleUser) => {
+    setGoogleUser(userData);
+    const userPayload = {
+      name: userData.name,
+      email: userData.email,
+      avatar: userData.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(userData.email)}`,
+      id: userData.sub || `g-${Date.now()}`,
+    };
+    localStorage.setItem("user", JSON.stringify(userPayload));
+    localStorage.setItem("gUser", JSON.stringify(userData));
+    setForm((f) => ({ ...f, name: userData.name }));
+    if (userData.email) {
+      syncUserVendorAccount(userData.email);
+    }
+    setShowSignInModal(false);
+    setShowManualGoogleForm(false);
+    import("sonner").then(({ toast }) => toast.success(`Signed in as ${userData.name}!`));
   };
 
   const handleGoogleSignIn = async () => {
-    if (!GOOGLE_CLIENT_ID) {
-      // No client ID configured — demo mode
-      const demoUser: GoogleUser = {
-        name: "Demo User",
-        email: "demo@trends.app",
-        picture: "",
-        sub: "demo-" + Date.now(),
-      };
-      setGoogleUser(demoUser);
-      localStorage.setItem("gUser", JSON.stringify(demoUser));
-      setForm((f) => ({ ...f, name: demoUser.name }));
-      setShowSignInModal(false);
+    setGoogleLoading(true);
+    const clientId = GOOGLE_CLIENT_ID;
+
+    if (typeof window !== "undefined") {
+      await loadGsiScript();
+      const google = (window as any).google;
+
+      // 1. Try Google OAuth2 Token Client Popup
+      if (google?.accounts?.oauth2) {
+        try {
+          const client = google.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
+            callback: async (tokenResponse: any) => {
+              setGoogleLoading(false);
+              if (tokenResponse?.access_token) {
+                try {
+                  const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                  });
+                  const profile = await res.json();
+                  if (profile?.email) {
+                    const userData: GoogleUser = {
+                      name: profile.name || profile.given_name || profile.email.split("@")[0],
+                      email: profile.email,
+                      picture: profile.picture || "",
+                      sub: profile.sub || `g-${Date.now()}`,
+                    };
+                    completeSignIn(userData);
+                    return;
+                  }
+                } catch (err) {
+                  console.error("Failed fetching Google user info:", err);
+                }
+              }
+            },
+            error_callback: () => {
+              setGoogleLoading(false);
+              setShowManualGoogleForm(true);
+            },
+          });
+          client.requestAccessToken();
+          return;
+        } catch (e) {
+          console.error("Token client error:", e);
+        }
+      }
+
+      // 2. Try Google One Tap
+      if (google?.accounts?.id) {
+        try {
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (resp: { credential: string }) => {
+              setGoogleLoading(false);
+              const user = parseJwt(resp.credential);
+              if (user) {
+                completeSignIn(user);
+              }
+            },
+          });
+          google.accounts.id.prompt((notification: any) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              setGoogleLoading(false);
+              setShowManualGoogleForm(true);
+            }
+          });
+          return;
+        } catch (err) {
+          console.error("Google One Tap error:", err);
+        }
+      }
+    }
+
+    setGoogleLoading(false);
+    setShowManualGoogleForm(true);
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualEmail.trim() || !manualEmail.includes("@")) {
+      import("sonner").then(({ toast }) => toast.error("Please enter a valid Google email address."));
       return;
     }
-    if (!gsiReady) await initGsi();
-    (window as any).google.accounts.id.prompt();
+    const name = manualName.trim() || manualEmail.split("@")[0];
+    const userData: GoogleUser = {
+      name,
+      email: manualEmail.trim().toLowerCase(),
+      picture: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(manualEmail.trim())}`,
+      sub: `g-${Date.now()}`,
+    };
+    completeSignIn(userData);
+  };
+
+  const handleQuickDemoSignIn = () => {
+    const demoUser: GoogleUser = {
+      name: "Shopper",
+      email: "shopper@gmail.com",
+      picture: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+      sub: `demo-${Date.now()}`,
+    };
+    completeSignIn(demoUser);
   };
 
   const signOut = () => {
     setGoogleUser(null);
     localStorage.removeItem("gUser");
+    localStorage.removeItem("user");
     setForm((f) => ({ ...f, name: "" }));
+    import("sonner").then(({ toast }) => toast.success("Signed out"));
   };
 
   const subtotal = cartItems.reduce((s: number, i: any) => s + i.price * i.qty, 0);
@@ -388,14 +510,14 @@ function Checkout() {
 
         {/* Google Sign In Modal */}
         {showSignInModal && (
-          <div className="absolute inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)" }}>
-            <div className="p-6 relative animate-in slide-in-from-bottom duration-300" style={{ background: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, boxShadow: "0 -20px 40px rgba(0,0,0,0.2)" }}>
+          <div className="absolute inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)" }}>
+            <div className="p-6 relative animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto" style={{ background: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, boxShadow: "0 -20px 40px rgba(0,0,0,0.25)" }}>
               {/* Handle */}
               <div className="flex justify-center mb-3">
-                <div style={{ width: 36, height: 4, borderRadius: 999, background: "rgba(17,17,17,0.12)" }} />
+                <div style={{ width: 36, height: 4, borderRadius: 999, background: "rgba(17,17,17,0.15)" }} />
               </div>
-              <button onClick={() => setShowSignInModal(false)} className="absolute top-5 right-5 flex items-center justify-center" style={{ width: 32, height: 32, borderRadius: 999, background: "#F7F7F5" }}>
-                <X size={14} color="#111" />
+              <button onClick={() => { setShowSignInModal(false); setShowManualGoogleForm(false); }} className="absolute top-5 right-5 flex items-center justify-center text-gray-500 hover:text-gray-900" style={{ width: 32, height: 32, borderRadius: 999, background: "#F7F7F5" }}>
+                <X size={15} />
               </button>
 
               <div style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>Sign in to continue</div>
@@ -403,19 +525,88 @@ function Checkout() {
                 Sign in to place your order and track your shipment.
               </p>
 
-              <button
-                onClick={handleGoogleSignIn}
-                className="mt-5 w-full flex items-center justify-center gap-3 active:scale-95 transition-all"
-                style={{ height: 54, borderRadius: 18, background: "#fff", boxShadow: "inset 0 0 0 1.5px rgba(17,17,17,0.12)", fontSize: 15, fontWeight: 600, color: "#111" }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                Continue with Google
-              </button>
+              {!showManualGoogleForm ? (
+                <div className="mt-5 space-y-3">
+                  <button
+                    onClick={handleGoogleSignIn}
+                    disabled={googleLoading}
+                    className="w-full flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-70"
+                    style={{ height: 54, borderRadius: 18, background: "#fff", boxShadow: "inset 0 0 0 1.5px rgba(17,17,17,0.14)", fontSize: 15, fontWeight: 600, color: "#111" }}
+                  >
+                    {googleLoading ? (
+                      <Loader2 size={18} className="animate-spin text-blue-600" />
+                    ) : (
+                      <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                      </svg>
+                    )}
+                    <span>{googleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
+                  </button>
+
+                  <div className="flex items-center gap-2 my-3">
+                    <div className="flex-1 h-px bg-gray-200" />
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">or sign in directly</span>
+                    <div className="flex-1 h-px bg-gray-200" />
+                  </div>
+
+                  <button
+                    onClick={() => setShowManualGoogleForm(true)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-800 transition-colors"
+                  >
+                    <Mail size={14} /> Enter Email / Name
+                  </button>
+
+                  <button
+                    onClick={handleQuickDemoSignIn}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-dashed border-gray-300 hover:bg-gray-50 text-xs font-semibold text-gray-600 transition-colors"
+                  >
+                    <Sparkles size={13} className="text-amber-500" /> 1-Click Instant Guest Sign-In
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleManualSubmit} className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Email Address</label>
+                    <input
+                      type="email"
+                      placeholder="your.email@gmail.com"
+                      value={manualEmail}
+                      onChange={(e) => setManualEmail(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-xs font-medium text-gray-900 focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. John Doe"
+                      value={manualName}
+                      onChange={(e) => setManualName(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-xs font-medium text-gray-900 focus:outline-none focus:border-blue-600"
+                    />
+                  </div>
+                  <div className="pt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowManualGoogleForm(false)}
+                      className="flex-1 py-3 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-md shadow-blue-600/30 hover:bg-blue-700"
+                    >
+                      Sign In
+                    </button>
+                  </div>
+                </form>
+              )}
 
               <p className="mt-4 text-center" style={{ fontSize: 11.5, color: "#8A8A8A", lineHeight: 1.5 }}>
                 By continuing, you agree to our Terms of Service and Privacy Policy.

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Package, Heart, MapPin, CreditCard, Bell, Settings, HelpCircle, LogOut, Sparkles, Gift, Zap, Shirt, Palette, CheckCircle2, Store, ShieldCheck, PackagePlus } from "lucide-react";
+import { ChevronRight, Package, Heart, MapPin, CreditCard, Bell, Settings, HelpCircle, LogOut, Sparkles, Gift, Zap, Shirt, Palette, CheckCircle2, Store, ShieldCheck, PackagePlus, User } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import { useEffect, useState } from "react";
@@ -76,11 +76,24 @@ function Profile() {
                   boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.16), inset 0 0 0 1px rgba(17,17,17,0.04)",
                 }}>
                 <div className="flex items-center justify-center shrink-0 overflow-hidden"
-                  style={{ width: 62, height: 62, borderRadius: 999, background: "linear-gradient(135deg, #0F62FE, #61B0FF)", color: "#fff", fontSize: 22, fontWeight: 700, letterSpacing: -0.4, boxShadow: "0 12px 24px -10px rgba(15,98,254,0.5)" }}>
+                  style={{
+                    width: 62,
+                    height: 62,
+                    borderRadius: 999,
+                    background: user ? "linear-gradient(135deg, #0F62FE, #61B0FF)" : "#F3F4F6",
+                    color: user ? "#fff" : "#6B7280",
+                    fontSize: 22,
+                    fontWeight: 700,
+                    letterSpacing: -0.4,
+                    boxShadow: user ? "0 12px 24px -10px rgba(15,98,254,0.5)" : "none",
+                    border: user ? "none" : "1px solid #E5E7EB"
+                  }}>
                   {user?.avatar ? (
                     <img src={user.avatar} alt={user.name || "User"} className="w-full h-full object-cover" />
+                  ) : user ? (
+                    (user.name?.[0] || user.email?.[0] || "U").toUpperCase()
                   ) : (
-                    (user?.name?.[0] || user?.email?.[0] || "G").toUpperCase()
+                    <User size={28} className="text-gray-500" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">

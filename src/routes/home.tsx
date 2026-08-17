@@ -8,7 +8,7 @@ import curated from "@/assets/home-curated.jpg";
 import bag from "@/assets/home-bag.jpg";
 import watch from "@/assets/home-watch.jpg";
 import tote from "@/assets/prod-tote.jpg";
-import { getCJProducts, getCJSearch, parseCJSafetyPrice, fetchCategoryPage, CJProduct, CATEGORIES } from "@/lib/cjApi";
+import { fetchCategoryPage, CJProduct, CATEGORIES } from "@/lib/cjApi";
 import { getVendorProfile, getVendorProducts, VendorProduct } from "@/lib/vendor";
 import { VendorAddProductModal } from "@/components/vendor/VendorAddProductModal";
 
@@ -274,11 +274,13 @@ function Home() {
               <div className="flex items-start justify-between">
                 <div>
                   <div style={{ fontSize: 13, color: "#8A8A8A", fontWeight: 500 }}>
-                    {vendorProfile?.verified ? "Verified Vendor Portal" : "Welcome Back"}
+                    {vendorProfile?.verified ? "Verified Vendor Portal" : currentUser ? "Welcome Back" : "Welcome"}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111111", letterSpacing: -0.6, textTransform: "uppercase" }}>
-                      {vendorProfile?.verified ? (vendorProfile.storeName || "SHIKARI") : (currentUser?.name || "SHIKARI")}
+                      {vendorProfile?.verified
+                        ? (vendorProfile.storeName || "VENDOR")
+                        : (currentUser?.name ? currentUser.name : "GUEST")}
                     </h1>
                     {vendorProfile?.verified && (
                       <CheckCircle2 size={18} className="text-blue-600 fill-blue-600 text-white shrink-0" />
@@ -289,7 +291,7 @@ function Home() {
                 {/* Right Action Icons Row */}
                 <div className="flex items-center gap-2 shrink-0 pt-1">
                   {/* Add Product Button if Verified Vendor */}
-                  {vendorProfile?.verified && (
+                  {vendorProfile?.verified && currentUser && (
                     <button
                       onClick={() => setShowAddProductModal(true)}
                       className="px-3.5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/30 flex items-center gap-1.5 active:scale-95 transition-transform"
@@ -311,13 +313,17 @@ function Home() {
                   <Link
                     to="/profile"
                     aria-label="Profile"
-                    className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shadow-sm shrink-0"
+                    className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shadow-sm shrink-0 flex items-center justify-center bg-gray-100/80 hover:bg-gray-200 transition-colors"
                   >
                     {currentUser?.avatar ? (
                       <img src={currentUser.avatar} alt="User Profile" className="w-full h-full object-cover" />
-                    ) : (
+                    ) : currentUser?.name ? (
                       <div className="w-full h-full bg-gray-900 text-white flex items-center justify-center font-bold text-xs">
-                        {(currentUser?.name || "U")[0].toUpperCase()}
+                        {currentUser.name[0].toUpperCase()}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 text-gray-700 flex items-center justify-center">
+                        <User size={18} className="text-gray-700" />
                       </div>
                     )}
                   </Link>
@@ -472,14 +478,14 @@ function Home() {
               <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "#111" }}>New Arrivals</h2>
             </div>
             <div className="flex gap-3 overflow-x-auto px-6 mt-4" style={{ scrollbarWidth: "none" }}>
-              {newArrivals.map((p) => {
+              {newArrivals.map((p, idx) => {
                 const isLiked = wishlist.includes(p.id);
                 const isAdded = addedToCartIds.includes(p.id);
                 return (
                   <Link
                     to="/product/$id"
                     params={{ id: p.cjId || p.id }}
-                    key={p.id}
+                    key={`${p.id}-${idx}`}
                     className="shrink-0 overflow-hidden block"
                     style={{
                       width: 172,
@@ -627,7 +633,7 @@ function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 px-6 mt-4">
-                {trending.map((p) => {
+                {trending.map((p, idx) => {
                   const isLiked = wishlist.includes(p.id);
                   const isAdded = addedToCartIds.includes(p.id);
                   const isVendorItem = p.vendorVerified || p.id?.startsWith("v-");
@@ -635,7 +641,7 @@ function Home() {
                     <Link
                       to="/product/$id"
                       params={{ id: p.cjId || p.id }}
-                      key={p.id}
+                      key={`${p.id}-${idx}`}
                       className="overflow-hidden block group active:scale-[0.98] transition-all relative"
                       style={{
                         borderRadius: 22,

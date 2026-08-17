@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Moon, Bell, Languages, Globe, ShieldCheck, ScanFace, DollarSign, Sparkles, Database, Info, CheckCircle2, Store, PackagePlus, Trash2, ShoppingBag, PlusCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Moon, Bell, Languages, Globe, ShieldCheck, ScanFace, DollarSign, Sparkles, Database, Info, CheckCircle2, Store, PackagePlus, Trash2, ShoppingBag, PlusCircle, User } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { BottomNav } from "@/components/phone/BottomNav";
 import { VendorVerificationModal } from "@/components/vendor/VendorVerificationModal";
@@ -86,11 +86,23 @@ function SettingsPage() {
             <div className="mx-5 mt-5 p-4 flex items-center gap-4"
               style={{ borderRadius: 22, background: "#fff",
                 boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 14px 30px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-              <div className="flex items-center justify-center shrink-0 overflow-hidden" style={{ width: 52, height: 52, borderRadius: 999, background: "linear-gradient(135deg, #0F62FE, #61B0FF)", color: "#fff", fontSize: 20, fontWeight: 700 }}>
+              <div className="flex items-center justify-center shrink-0 overflow-hidden"
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 999,
+                  background: user ? "linear-gradient(135deg, #0F62FE, #61B0FF)" : "#F3F4F6",
+                  color: user ? "#fff" : "#6B7280",
+                  fontSize: 20,
+                  fontWeight: 700,
+                  border: user ? "none" : "1px solid #E5E7EB"
+                }}>
                 {user?.avatar ? (
                   <img src={user.avatar} alt={user.name || "User"} className="w-full h-full object-cover" />
+                ) : user ? (
+                  (user.name?.[0] || user.email?.[0] || "U").toUpperCase()
                 ) : (
-                  (user?.name?.[0] || user?.email?.[0] || "G").toUpperCase()
+                  <User size={24} className="text-gray-500" />
                 )}
               </div>
               <div className="flex-1 min-w-0">

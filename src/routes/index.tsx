@@ -15,11 +15,11 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-// Timeline:
-//  0 – 600ms   : fade IN
-//  600 – 4000ms: fully visible
-//  4000 – 4800ms: fade OUT
-//  4800ms       : navigate to /language
+// Timeline (Total 1.5s):
+//  0 – 250ms    : fade IN
+//  250 – 1150ms : fully visible
+//  1150 – 1500ms: fade OUT
+//  1500ms (1.5s): navigate to destination
 
 function Splash() {
   const navigate = useNavigate();
@@ -31,9 +31,9 @@ function Splash() {
     // Use requestAnimationFrame to guarantee the first render with opacity:0
     // has been painted before we flip to opacity:1
     const raf = requestAnimationFrame(() => {
-      setTimeout(() => setVis(true), 50);
+      setTimeout(() => setVis(true), 30);
     });
-    const t1 = setTimeout(() => setOut(true), 4000);
+    const t1 = setTimeout(() => setOut(true), 1150);
     const t2 = setTimeout(() => {
       const savedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
       if (savedUser) {
@@ -41,7 +41,7 @@ function Splash() {
       } else {
         navigate({ to: "/onboarding" });
       }
-    }, 4800);
+    }, 1500);
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(t1);
@@ -62,8 +62,8 @@ function Splash() {
         justifyContent: "center",
         opacity,
         transition: out
-          ? "opacity 800ms ease-in-out"
-          : "opacity 700ms ease-in-out",
+          ? "opacity 350ms ease-in-out"
+          : "opacity 300ms ease-out",
       }}
     >
       <img

@@ -73,7 +73,7 @@ function Payment() {
         setCartItems([{ id: "demo-item", name: "Trends Luxury Order", price: 3798, qty: 1 }]);
       }
 
-      const savedUser = localStorage.getItem("gUser");
+      const savedUser = localStorage.getItem("user") || localStorage.getItem("gUser");
       if (savedUser) {
         try {
           const u = JSON.parse(savedUser);
@@ -121,7 +121,7 @@ function Payment() {
 
       const paystackKey =
         (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string) ||
-        "pk_test_b8e5c8e376ff06a928e4695b28d7a123";
+        "pk_test_80020764ce90e3141f478e6ac42e228133b2efc0";
 
       const payAmount = Math.round((total > 0 ? total : 3798) * 100);
       const transactionRef = "TRD-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
@@ -137,13 +137,13 @@ function Payment() {
             amount: payAmount,
             currency: "GHS",
             ref: transactionRef,
-            onClose: () => {
+            onClose: function () {
               setIsProcessing(false);
               import("sonner").then(({ toast }) => toast.info("Payment process cancelled."));
             },
-            callback: async (response: { reference: string }) => {
+            callback: function (response: any) {
               import("sonner").then(({ toast }) => toast.success("Payment verified via Paystack!"));
-              await finalizeOrder(response.reference || transactionRef);
+              finalizeOrder(response?.reference || transactionRef);
             },
           });
 
@@ -163,11 +163,11 @@ function Payment() {
               amount: payAmount,
               currency: "GHS",
               ref: transactionRef,
-              onSuccess: async (transaction: any) => {
+              onSuccess: function (transaction: any) {
                 import("sonner").then(({ toast }) => toast.success("Payment verified via Paystack!"));
-                await finalizeOrder(transaction.reference || transactionRef);
+                finalizeOrder(transaction?.reference || transactionRef);
               },
-              onCancel: () => {
+              onCancel: function () {
                 setIsProcessing(false);
                 import("sonner").then(({ toast }) => toast.info("Payment process cancelled."));
               },
