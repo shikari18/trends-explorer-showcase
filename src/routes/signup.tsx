@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Mail, Phone, Lock, ArrowLeft, X } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { syncUserVendorAccount } from "@/lib/vendor";
+import { LegalConsentCard, LegalConsentInline } from "@/components/legal/LegalConsent";
 
 export const Route = createFileRoute("/signup")({
   component: Index,
@@ -238,13 +239,8 @@ function Index() {
                 </button>
               </div>
 
-              {/* Terms note */}
-              <div
-                className="text-center mt-10 max-w-xs mx-auto"
-                style={{ fontSize: 12, lineHeight: 1.5, color: "#8A8A8A" }}
-              >
-                By creating an account, you agree to Trends’ Terms of Service and Privacy Policy.
-              </div>
+              {/* Legal consent — every policy opens its own page */}
+              <LegalConsentCard />
 
               {/* Footer */}
               <div
@@ -307,6 +303,7 @@ function Index() {
                     className="w-full px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-xs font-medium focus:outline-none focus:border-blue-600"
                   />
                 </div>
+                <LegalConsentInline onNavigate={() => setShowGoogleModal(false)} />
                 <div className="pt-2 flex justify-end gap-2">
                   <button
                     type="button"

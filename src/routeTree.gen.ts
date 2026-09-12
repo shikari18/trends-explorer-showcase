@@ -20,6 +20,7 @@ import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DropsRouteImport } from './routes/drops'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as LegalRouteImport } from './routes/legal'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -39,6 +40,8 @@ import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as BrandSlugRouteImport } from './routes/brand.$slug'
 import { Route as CategorySlugRouteImport } from './routes/category.$slug'
+import { Route as LegalIndexRouteImport } from './routes/legal.index'
+import { Route as LegalSlugRouteImport } from './routes/legal.$slug'
 import { Route as ProductIdRouteImport } from './routes/product.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -94,6 +97,11 @@ const DropsRoute = DropsRouteImport.update({
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalRoute = LegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -191,6 +199,16 @@ const CategorySlugRoute = CategorySlugRouteImport.update({
   path: '/category/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LegalIndexRoute = LegalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LegalRoute,
+} as any)
+const LegalSlugRoute = LegalSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => LegalRoute,
+} as any)
 const ProductIdRoute = ProductIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -209,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/design-system': typeof DesignSystemRoute
   '/drops': typeof DropsRoute
   '/home': typeof HomeRoute
+  '/legal': typeof LegalRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/offline': typeof OfflineRoute
   '/onboarding': typeof OnboardingRoute
@@ -228,7 +247,9 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/legal/$slug': typeof LegalSlugRoute
   '/product/$id': typeof ProductIdRoute
+  '/legal/': typeof LegalIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -261,7 +282,9 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/legal/$slug': typeof LegalSlugRoute
   '/product/$id': typeof ProductIdRoute
+  '/legal': typeof LegalIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -276,6 +299,7 @@ export interface FileRoutesById {
   '/design-system': typeof DesignSystemRoute
   '/drops': typeof DropsRoute
   '/home': typeof HomeRoute
+  '/legal': typeof LegalRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/offline': typeof OfflineRoute
   '/onboarding': typeof OnboardingRoute
@@ -295,7 +319,9 @@ export interface FileRoutesById {
   '/admin/dashboard': typeof AdminDashboardRoute
   '/brand/$slug': typeof BrandSlugRoute
   '/category/$slug': typeof CategorySlugRoute
+  '/legal/$slug': typeof LegalSlugRoute
   '/product/$id': typeof ProductIdRoute
+  '/legal/': typeof LegalIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -311,6 +337,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/drops'
     | '/home'
+    | '/legal'
     | '/notifications'
     | '/offline'
     | '/onboarding'
@@ -330,7 +357,9 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
+    | '/legal/$slug'
     | '/product/$id'
+    | '/legal/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -363,7 +392,9 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
+    | '/legal/$slug'
     | '/product/$id'
+    | '/legal'
   id:
     | '__root__'
     | '/'
@@ -377,6 +408,7 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/drops'
     | '/home'
+    | '/legal'
     | '/notifications'
     | '/offline'
     | '/onboarding'
@@ -396,7 +428,9 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/brand/$slug'
     | '/category/$slug'
+    | '/legal/$slug'
     | '/product/$id'
+    | '/legal/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -411,6 +445,7 @@ export interface RootRouteChildren {
   DesignSystemRoute: typeof DesignSystemRoute
   DropsRoute: typeof DropsRoute
   HomeRoute: typeof HomeRoute
+  LegalRoute: typeof LegalRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
   OfflineRoute: typeof OfflineRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -508,6 +543,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -643,6 +685,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategorySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/legal/': {
+      id: '/legal/'
+      path: '/'
+      fullPath: '/legal/'
+      preLoaderRoute: typeof LegalIndexRouteImport
+      parentRoute: typeof LegalRoute
+    }
+    '/legal/$slug': {
+      id: '/legal/$slug'
+      path: '/$slug'
+      fullPath: '/legal/$slug'
+      preLoaderRoute: typeof LegalSlugRouteImport
+      parentRoute: typeof LegalRoute
+    }
     '/product/$id': {
       id: '/product/$id'
       path: '/$id'
@@ -662,6 +718,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface LegalRouteChildren {
+  LegalSlugRoute: typeof LegalSlugRoute
+  LegalIndexRoute: typeof LegalIndexRoute
+}
+
+const LegalRouteChildren: LegalRouteChildren = {
+  LegalSlugRoute: LegalSlugRoute,
+  LegalIndexRoute: LegalIndexRoute,
+}
+
+const LegalRouteWithChildren = LegalRoute._addFileChildren(LegalRouteChildren)
 
 interface ProductRouteChildren {
   ProductIdRoute: typeof ProductIdRoute
@@ -686,6 +754,7 @@ const rootRouteChildren: RootRouteChildren = {
   DesignSystemRoute: DesignSystemRoute,
   DropsRoute: DropsRoute,
   HomeRoute: HomeRoute,
+  LegalRoute: LegalRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
   OfflineRoute: OfflineRoute,
   OnboardingRoute: OnboardingRoute,
