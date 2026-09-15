@@ -49,7 +49,33 @@ function Payment() {
   const [otpValue, setOtpValue] = useState("");
   const [currentRef, setCurrentRef] = useState("");
   const [momoPolling, setMomoPolling] = useState(false);
+  const [isSubmittingOtp, setIsSubmittingOtp] = useState(false);
   const pollInterval = useRef<any>(null);
+
+  // Helper to update payment status and persist active state across app switching
+  const updatePayState = (status: PayStatus, msg = "", ref = currentRef) => {
+    setPayStatus(status);
+    setStatusMessage(msg);
+    if (ref) setCurrentRef(ref);
+    if (typeof window !== "undefined") {
+      if (status === "otp" || status === "waiting_momo") {
+        try {
+          sessionStorage.setItem("trends_active_payment", JSON.stringify({
+            status,
+            message: msg,
+            reference: ref,
+            method,
+            momoNumber,
+            timestamp: Date.now(),
+          }));
+        } catch {}
+      } else {
+        try {
+          sessionStorage.removeItem("trends_active_payment");
+        } catch {}
+      }
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -75,6 +101,27 @@ function Payment() {
           if (addr.name && !cardHolder) setCardHolder(addr.name);
         } catch {}
       }
+
+      // Check if user was in the middle of OTP or MoMo when switching apps
+      try {
+        const active = sessionStorage.getItem("trends_active_payment");
+        if (active) {
+          const parsed = JSON.parse(active);
+          // If within last 15 minutes, restore the active payment screen
+          if (parsed && parsed.reference && (Date.now() - (parsed.timestamp || 0) < 15 * 60 * 1000)) {
+            setCurrentRef(parsed.reference);
+            setPayStatus(parsed.status);
+            setStatusMessage(parsed.message || "");
+            if (parsed.method) setMethod(parsed.method);
+            if (parsed.momoNumber) setMomoNumber(parsed.momoNumber);
+            if (parsed.status === "waiting_momo") {
+              startMomoPoll(parsed.reference);
+            }
+          } else {
+            sessionStorage.removeItem("trends_active_payment");
+          }
+        }
+      } catch {}
     }
     return () => { if (pollInterval.current) clearInterval(pollInterval.current); };
   }, []);
@@ -193,6 +240,8 @@ function Payment() {
   const startMomoPoll = (reference: string) => {
     setMomoPolling(true);
     let attempts = 0;
+    const maxAttempts = 36; // 36 * 5s = 3 minutes polling for USSD PIN entry
+    if (pollInterval.current) clearInterval(pollInterval.current);
     pollInterval.current = setInterval(async () => {
       attempts++;
       try {
@@ -201,19 +250,20 @@ function Payment() {
           clearInterval(pollInterval.current);
           setMomoPolling(false);
           await finalizeOrder(reference);
-        } else if (res.status === "failed" || res.status === "abandoned" || attempts >= 24) {
+        } else if (res.status === "failed" || attempts >= maxAttempts) {
+          // CRITICAL: NEVER exit or fail on "abandoned" or "pending" or "ongoing" or "unknown"!
+          // Paystack transaction/verify reports "abandoned" on pending charges until the user enters PIN.
+          // Only stop when Paystack explicitly reports "failed" or max 3-minute attempts is reached.
           clearInterval(pollInterval.current);
           setMomoPolling(false);
-          const f = friendlyMessage(res.status, "Payment was not completed. Please try again.");
-          setPayStatus(f.type);
-          setStatusMessage(f.text);
+          const f = friendlyMessage(res.status, "Payment was not approved in time. Please try again.");
+          updatePayState(f.type, f.text, reference);
         }
       } catch {
-        if (attempts >= 24) {
+        if (attempts >= maxAttempts) {
           clearInterval(pollInterval.current);
           setMomoPolling(false);
-          setPayStatus("failed");
-          setStatusMessage("Could not verify payment. Please contact support if amount was deducted.");
+          updatePayState("failed", "Could not verify payment. Please contact support if amount was deducted.", reference);
         }
       }
     }, 5000);
@@ -222,11 +272,10 @@ function Payment() {
   // ── Main Pay Handler ──
   const handleProcessPayment = async () => {
     if (payStatus === "processing" || payStatus === "waiting_momo") return;
-    setPayStatus("processing");
-    setStatusMessage("");
+    updatePayState("processing", "");
 
     if (method === "visa") {
-      if (!validateCard()) { setPayStatus("idle"); return; }
+      if (!validateCard()) { updatePayState("idle", ""); return; }
       const [mm, yy] = cardExpiry.split("/");
       const ref = makeRef();
       setCurrentRef(ref);
@@ -244,21 +293,21 @@ function Payment() {
         });
         if (res.status === "success") {
           await finalizeOrder(res.reference || ref);
+        } else if (res.status === "send_otp" || res.status === "send_pin" || res.status === "send_phone") {
+          updatePayState("otp", res.message || res.displayText || "Enter the OTP code sent to your phone to verify your card.", res.reference || ref);
         } else {
           const f = friendlyMessage(res.status, res.message || res.displayText);
-          setPayStatus(f.type);
-          setStatusMessage(f.text);
+          updatePayState(f.type, f.text, res.reference || ref);
         }
       } catch (e: any) {
-        setPayStatus("failed");
-        setStatusMessage("Payment failed. Please check your connection and try again.");
+        updatePayState("failed", "Payment failed. Please check your connection and try again.", ref);
       }
       return;
     }
 
     if (method === "momo" || method === "telecel") {
       if (!momoNumber.trim() || momoNumber.replace(/\D/g, "").length < 9) {
-        setPayStatus("idle");
+        updatePayState("idle", "");
         import("sonner").then(({ toast }) => toast.error("Enter a valid phone number."));
         return;
       }
@@ -277,18 +326,19 @@ function Payment() {
         });
         if (res.status === "success") {
           await finalizeOrder(res.reference || ref);
-        } else if (res.status === "send_otp" || res.status === "pay_offline" || res.status === "pending" || res.status === "ongoing") {
-          setPayStatus("waiting_momo");
-          setStatusMessage(res.message || res.displayText || `A prompt has been sent to ${momoNumber}. Enter your PIN to approve.`);
+        } else if (res.status === "send_otp") {
+          // CRITICAL: If network sent an OTP via SMS (e.g. Telecel/Vodafone or SMS authorization),
+          // SHOW THE OTP INPUT SCREEN so the customer can type/paste their OTP!
+          updatePayState("otp", res.message || res.displayText || `Enter the OTP code sent to ${momoNumber} to approve this payment.`, res.reference || ref);
+        } else if (res.status === "pay_offline" || res.status === "pending" || res.status === "ongoing" || res.status === "send_pin") {
+          updatePayState("waiting_momo", res.message || res.displayText || `A payment prompt has been sent to ${momoNumber}. Enter your PIN to approve.`, res.reference || ref);
           startMomoPoll(res.reference || ref);
         } else {
           const f = friendlyMessage(res.status, res.message || res.displayText);
-          setPayStatus(f.type);
-          setStatusMessage(f.text);
+          updatePayState(f.type, f.text, res.reference || ref);
         }
       } catch {
-        setPayStatus("failed");
-        setStatusMessage("Could not initiate mobile money request. Try again.");
+        updatePayState("failed", "Could not initiate mobile money request. Try again.", ref);
       }
       return;
     }
@@ -311,30 +361,38 @@ function Payment() {
         const handler = pop.setup({
           key, email: userEmail,
           amount: Math.round(total * 100), currency: "GHS", ref,
-          onClose: () => setPayStatus("idle"),
+          onClose: () => updatePayState("idle", ""),
           callback: (response: any) => finalizeOrder(response?.reference || ref),
         });
         handler?.openIframe?.();
       }
-    } catch { setPayStatus("idle"); }
+    } catch { updatePayState("idle", ""); }
   };
 
-  // ── Submit OTP (for card 3DS) ──
+  // ── Submit OTP (for card 3DS or MoMo SMS verification) ──
   const handleSubmitOtp = async () => {
-    if (!otpValue.trim()) return;
-    setPayStatus("processing");
+    if (!otpValue.trim() || isSubmittingOtp) return;
+    setIsSubmittingOtp(true);
+    setStatusMessage("Verifying OTP with your bank...");
     try {
-      const res = await serverSubmitOtp({ data: { otp: otpValue, reference: currentRef } });
+      const res = await serverSubmitOtp({ data: { otp: otpValue.trim(), reference: currentRef } });
       if (res.status === "success") {
         await finalizeOrder(res.reference || currentRef);
+      } else if (res.status === "send_otp") {
+        setIsSubmittingOtp(false);
+        updatePayState("otp", res.message || res.displayText || "Invalid OTP code. Please check and try again.", currentRef);
+      } else if (res.status === "pay_offline" || res.status === "pending" || res.status === "ongoing") {
+        setIsSubmittingOtp(false);
+        updatePayState("waiting_momo", res.message || res.displayText || "OTP verified! Please authorize the prompt on your phone.", currentRef);
+        startMomoPoll(res.reference || currentRef);
       } else {
+        setIsSubmittingOtp(false);
         const f = friendlyMessage(res.status, res.message || res.displayText);
-        setPayStatus(f.type === "otp" ? "otp" : f.type);
-        setStatusMessage(f.text);
+        updatePayState(f.type, f.text, currentRef);
       }
     } catch {
-      setPayStatus("failed");
-      setStatusMessage("OTP verification failed. Please try again.");
+      setIsSubmittingOtp(false);
+      updatePayState("failed", "OTP verification failed. Please check your connection and try again.", currentRef);
     }
   };
 
@@ -398,8 +456,8 @@ function Payment() {
                       Checking for approval... ({momoNumber})
                     </div>
                     <button
-                      onClick={() => { clearInterval(pollInterval.current); setPayStatus("idle"); setStatusMessage(""); }}
-                      className="text-xs text-red-500 font-semibold mt-1"
+                      onClick={() => { if (pollInterval.current) clearInterval(pollInterval.current); updatePayState("idle", ""); }}
+                      className="text-xs text-red-500 font-semibold mt-1 hover:underline"
                     >
                       Cancel & try again
                     </button>
@@ -413,11 +471,15 @@ function Payment() {
                       <ShieldCheck size={16} className="text-indigo-600" />
                       One-Time Password Required
                     </div>
-                    <div className="text-xs text-indigo-700 leading-relaxed">{statusMessage || "Enter the OTP sent to your registered phone or email to verify your card."}</div>
+                    <div className="text-xs text-indigo-700 leading-relaxed">
+                      {statusMessage || "Enter the OTP code sent to your phone or email to complete payment."}
+                    </div>
                     <input
                       type="text"
                       inputMode="numeric"
-                      maxLength={8}
+                      autoComplete="one-time-code"
+                      maxLength={10}
+                      autoFocus
                       value={otpValue}
                       onChange={e => setOtpValue(e.target.value.replace(/\D/g, ""))}
                       placeholder="Enter OTP code"
@@ -425,12 +487,16 @@ function Payment() {
                     />
                     <button
                       onClick={handleSubmitOtp}
-                      disabled={otpValue.length < 4}
-                      className="py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm disabled:opacity-40"
+                      disabled={otpValue.length < 3 || isSubmittingOtp}
+                      className="py-3 rounded-xl bg-indigo-600 text-white font-bold text-sm disabled:opacity-40 flex items-center justify-center gap-2"
                     >
-                      Verify & Complete Payment
+                      {isSubmittingOtp ? <Loader2 size={16} className="animate-spin" /> : null}
+                      {isSubmittingOtp ? "Verifying..." : "Verify & Complete Payment"}
                     </button>
-                    <button onClick={() => { setPayStatus("idle"); setOtpValue(""); }} className="text-xs text-gray-500 font-medium">
+                    <button
+                      onClick={() => { updatePayState("idle", ""); setOtpValue(""); }}
+                      className="text-xs text-gray-500 font-medium hover:underline"
+                    >
                       Cancel & try again
                     </button>
                   </div>
@@ -463,7 +529,7 @@ function Payment() {
                       </div>
                     </div>
                     <button
-                      onClick={() => { setPayStatus("idle"); setStatusMessage(""); setOtpValue(""); }}
+                      onClick={() => { updatePayState("idle", ""); setOtpValue(""); }}
                       className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white"
                       style={{ background: payStatus === "insufficient" ? "#D97706" : "#DC2626" }}
                     >
