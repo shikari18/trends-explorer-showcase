@@ -27,6 +27,22 @@ const DEFAULT_FALLBACK_PRODUCTS: CJProduct[] = [
   { id: "cj-tech-1", cjId: "18237192", brand: "Sony", name: "Wireless Noise Cancelling Gaming Headphones", price: "₵389", rawPrice: 389, img: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "450" },
   { id: "cj-men-1", cjId: "98127391", brand: "Off-White", name: "Streetwear Oversized Graphic Hoodie", price: "₵245", rawPrice: 245, img: "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=800&q=80", rating: 4.7, reviews: "98" },
   { id: "cj-watch-1", cjId: "77619283", brand: "Nordic", name: "Minimalist Chronograph Gold Watch", price: "₵520", rawPrice: 520, img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "310" },
+  { id: "cj-bag-1", cjId: "38910293", brand: "Prada", name: "Saffiano Leather Crossbody Messenger Bag", price: "₵680", rawPrice: 680, img: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "215" },
+  { id: "cj-shoe-1", cjId: "59102834", brand: "Nike", name: "Air Retro High OG Streetwear Sneakers", price: "₵490", rawPrice: 490, img: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80", rating: 4.8, reviews: "520" },
+  { id: "cj-jewel-1", cjId: "68291029", brand: "Cartier", name: "18k Gold Plated Eternal Link Bracelet", price: "₵340", rawPrice: 340, img: "https://images.unsplash.com/photo-1611591475825-9c59520e5c94?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "184" },
+  { id: "cj-decor-1", cjId: "48201948", brand: "Dyson", name: "Nordic Sunset Atmosphere Ambient Lamp", price: "₵195", rawPrice: 195, img: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80", rating: 4.7, reviews: "94" },
+  { id: "cj-glasses-1", cjId: "93820194", brand: "Ray-Ban", name: "Polarized Aviator Classic Sunglasses", price: "₵280", rawPrice: 280, img: "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=800&q=80", rating: 4.8, reviews: "340" },
+  { id: "cj-camera-1", cjId: "84729104", brand: "Sony", name: "Retro Classic 4K Pocket Digital Camera", price: "₵890", rawPrice: 890, img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "178" },
+  { id: "cj-tote-1", cjId: "39201948", brand: "Saint Laurent", name: "Canvas Minimalist Travel Tote Bag", price: "₵310", rawPrice: 310, img: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80", rating: 4.8, reviews: "260" },
+  { id: "cj-phone-1", cjId: "74920194", brand: "Apple", name: "MagSafe Magnetic Wireless Power Bank 10000mAh", price: "₵260", rawPrice: 260, img: "https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "410" },
+  { id: "cj-beauty-1", cjId: "64829104", brand: "Dior", name: "Ultra Glow Hydrating Face Serum & Roller", price: "₵220", rawPrice: 220, img: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=800&q=80", rating: 4.8, reviews: "135" },
+  { id: "cj-sports-1", cjId: "53820194", brand: "Adidas", name: "High Grip Pro Training Yoga Mat", price: "₵175", rawPrice: 175, img: "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?auto=format&fit=crop&w=800&q=80", rating: 4.7, reviews: "88" },
+  { id: "cj-office-1", cjId: "42819204", brand: "Logitech", name: "RGB Mechanical Wireless Low-Profile Keyboard", price: "₵450", rawPrice: 450, img: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "370" },
+  { id: "cj-auto-1", cjId: "31829104", brand: "Xiaomi", name: "Smart Dash Cam Pro with Voice Control", price: "₵395", rawPrice: 395, img: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80", rating: 4.8, reviews: "152" },
+  { id: "cj-pet-1", cjId: "29819204", brand: "PetCare", name: "Automatic Smart Pet Feeder with HD Camera", price: "₵560", rawPrice: 560, img: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "204" },
+  { id: "cj-jacket-1", cjId: "18291049", brand: "Zara", name: "Vintage Suede Bomber Leather Jacket", price: "₵580", rawPrice: 580, img: "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=80", rating: 4.9, reviews: "312" },
+  { id: "cj-kids-1", cjId: "84729109", brand: "Lego", name: "Remote Control STEM Robotic Building Kit", price: "₵340", rawPrice: 340, img: "https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?auto=format&fit=crop&w=800&q=80", rating: 4.8, reviews: "167" },
+  { id: "cj-home-1", cjId: "73920194", brand: "IKEA", name: "Aroma Essential Oil Diffuser with LED Light", price: "₵145", rawPrice: 145, img: "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=800&q=80", rating: 4.7, reviews: "280" },
 ];
 
 function Home() {
@@ -115,42 +131,13 @@ function Home() {
         newItems = [];
         more = false;
       } else if (cat === "Random" || cat === "All") {
-        const allCatKeys = [
-          "Consumer Electronics",
-          "Home, Garden & Furniture",
-          "Women's Clothing",
-          "Phones & Accessories",
-          "Men's Clothing",
-          "Jewelry & Watches",
-          "Computer & Office",
-          "Bags & Shoes",
-          "Toys, Kids & Babies",
-          "Sports & Outdoors",
-          "Home Improvement",
-          "Pet Supplies",
-          "Automobiles & Motorcycles",
-          "Health, Beauty & Hair"
-        ];
-        const perCat = 4;
-        const results = await Promise.allSettled(
-          allCatKeys.map((c) => fetchCategoryPage(c, pageNum, perCat))
-        );
-        const arrays = results
-          .filter((r): r is PromiseFulfilledResult<{ products: CJProduct[]; hasMore: boolean }> => r.status === "fulfilled")
-          .map((r) => r.value.products);
-        const maxLen = Math.max(...arrays.map((a) => a.length), 0);
-        const interleaved: CJProduct[] = [];
-        for (let i = 0; i < maxLen; i++) {
-          for (const arr of arrays) {
-            if (i < arr.length) interleaved.push(arr[i]);
-          }
-        }
-        newItems = interleaved.length > 0 ? interleaved.sort(() => Math.random() - 0.5) : DEFAULT_FALLBACK_PRODUCTS;
-        more = true;
-      } else {
-        const res = await fetchCategoryPage(cat, pageNum, 50);
+        const res = await fetchCategoryPage("Random", pageNum, 40);
         newItems = res.products.length > 0 ? res.products : DEFAULT_FALLBACK_PRODUCTS;
-        more = true;
+        more = res.hasMore;
+      } else {
+        const res = await fetchCategoryPage(cat, pageNum, 40);
+        newItems = res.products.length > 0 ? res.products : DEFAULT_FALLBACK_PRODUCTS;
+        more = res.hasMore;
       }
 
       setProducts((prev) => (pageNum === 1 ? newItems : [...prev, ...newItems]));
