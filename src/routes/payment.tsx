@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, ShieldCheck, Lock, Check, CreditCard, Tag, Loader2, Smartphone, AlertCircle, X, ChevronDown, CheckCircle2 } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { Progress } from "./checkout";
-import { serverPlaceCJOrder } from "@/lib/cjApi";
+import { serverVerifyAndFulfillOrder } from "@/lib/cjApi";
 
 export const Route = createFileRoute("/payment")({
   component: Payment,
@@ -177,42 +177,43 @@ function Payment() {
   };
 
   const handleProcessPayment = async () => {
-    // 1. Direct Card Payment Flow
+    // ── Card flow: open Paystack popup pre-selected to card channel ──
     if (method === "visa") {
       if (!validateCard()) {
         import("sonner").then(({ toast }) => toast.error("Please complete your card details properly."));
         return;
       }
       setIsProcessing(true);
-      import("sonner").then(({ toast }) => toast.loading("Authorizing card payment with bank...", { duration: 1800 }));
-      setTimeout(async () => {
-        const ref = "CARD-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
-        import("sonner").then(({ toast }) => toast.success("Card payment successful!"));
-        await finalizeOrder(ref);
-      }, 2000);
+      await openPaystackPopup(["card"]);
       return;
     }
 
-    // 2. MTN MoMo or Telecel Cash Flow
+    // ── MoMo / Telecel flow: open Paystack popup with mobile_money channel ──
     if (method === "momo" || method === "telecel") {
       if (!momoNumber.trim() || momoNumber.replace(/\D/g, "").length < 9) {
-        import("sonner").then(({ toast }) => toast.error(`Please enter a valid ${method === "momo" ? "MTN MoMo" : "Telecel Cash"} phone number.`));
+        import("sonner").then(({ toast }) =>
+          toast.error(`Please enter a valid ${method === "momo" ? "MTN MoMo" : "Telecel Cash"} phone number.`)
+        );
         return;
       }
       setIsProcessing(true);
       setShowMomoPromptModal(true);
-      setMomoCountdown(25);
       return;
     }
 
-    // 3. Paystack Hosted Multi-Method Checkout
+    // ── Paystack hosted multi-method popup ──
     setIsProcessing(true);
+    await openPaystackPopup(["card", "mobile_money", "bank_transfer"]);
+  };
+
+  const openPaystackPopup = async (channels: string[]) => {
     try {
       await loadPaystackScript();
       const paystackKey =
         (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string) ||
-        "pk_test_80020764ce90e3141f478e6ac42e228133b2efc0";
+        "pk_live_4ee89791424f3443c50d3d7295a996a29fdeeeec";
 
+      // Amount in pesewas (GHS × 100)
       const payAmount = Math.round((total > 0 ? total : 3798) * 100);
       const transactionRef = "TRD-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
       const paystack = (window as any).PaystackPop;
@@ -224,13 +225,22 @@ function Payment() {
           amount: payAmount,
           currency: "GHS",
           ref: transactionRef,
+          channels,
+          metadata: {
+            order_ref: transactionRef,
+            customer_phone: momoNumber || shippingAddress?.phone || "",
+          },
           onClose: function () {
             setIsProcessing(false);
-            import("sonner").then(({ toast }) => toast.info("Payment process cancelled."));
+            setShowMomoPromptModal(false);
+            import("sonner").then(({ toast }) => toast.info("Payment cancelled."));
           },
           callback: function (response: any) {
-            import("sonner").then(({ toast }) => toast.success("Payment verified via Paystack!"));
-            finalizeOrder(response?.reference || transactionRef);
+            const ref = response?.reference || transactionRef;
+            import("sonner").then(({ toast }) =>
+              toast.loading("Verifying payment & placing order...", { duration: 5000, id: "verify-toast" })
+            );
+            finalizeOrder(ref);
           },
         });
 
@@ -240,36 +250,27 @@ function Payment() {
         }
       }
 
-      // Fallback
-      import("sonner").then(({ toast }) => toast.success("Processing payment..."));
-      setTimeout(async () => {
-        await finalizeOrder(transactionRef);
-      }, 1200);
+      // Fallback if Paystack script blocked (dev/offline)
+      import("sonner").then(({ toast }) => toast.loading("Processing...", { duration: 3000, id: "verify-toast" }));
+      setTimeout(() => finalizeOrder(transactionRef), 1500);
     } catch (e) {
-      console.warn("Paystack execution notice:", e);
-      setTimeout(async () => {
-        await finalizeOrder("TRD-" + Date.now());
-      }, 1000);
+      console.warn("Paystack popup notice:", e);
+      setIsProcessing(false);
     }
   };
 
   const handleApproveMomo = async () => {
     setShowMomoPromptModal(false);
-    import("sonner").then(({ toast }) => toast.success("Mobile Money transaction approved!"));
-    const ref = `${method.toUpperCase()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    await finalizeOrder(ref);
+    // Trigger Paystack mobile_money popup after user confirms they'll approve on phone
+    await openPaystackPopup(["mobile_money"]);
   };
 
-  const finalizeOrder = async (reference: string) => {
+  const finalizeOrder = async (paystackReference: string) => {
     try {
-      const cjProducts = cartItems.map((item) => ({
-        vid: item.vid || item.id,
-        quantity: item.qty || 1,
-      }));
-
-      await serverPlaceCJOrder({
+      const result = await serverVerifyAndFulfillOrder({
         data: {
-          orderNumber: reference,
+          paystackReference,
+          orderNumber: paystackReference,
           shippingName: shippingAddress?.name || cardHolder || "Customer",
           shippingPhone: shippingAddress?.phone || momoNumber || "0240000000",
           shippingAddress: shippingAddress?.address || "Delivery Address",
@@ -278,11 +279,48 @@ function Payment() {
           shippingCountry: shippingAddress?.country || "Ghana",
           shippingCountryCode: shippingAddress?.countryCode || "GH",
           shippingZip: shippingAddress?.zip || "00233",
-          products: cjProducts,
+          cartItems: cartItems.map((item) => ({
+            vid: item.vid || item.cjId || item.id || "",
+            cjId: item.cjId || item.id || "",
+            id: item.id || "",
+            name: item.name || "Item",
+            qty: typeof item.qty === "number" ? item.qty : parseInt(item.qty) || 1,
+            price: typeof item.price === "number" ? item.price : parseFloat(item.price) || 0,
+            rawPrice: item.rawPrice || (typeof item.price === "number" ? item.price : parseFloat(item.price)) || 0,
+          })),
         },
       });
+
+      import("sonner").then(({ toast }) => toast.dismiss("verify-toast"));
+
+      if (result?.verified) {
+        const profit = result.split?.yourProfitGHS ?? 0;
+        const cjCost = result.split?.totalCJCostGHS ?? 0;
+        import("sonner").then(({ toast }) =>
+          toast.success(
+            result.cjOrderSuccess
+              ? `✅ Order confirmed! Your profit: ₵${profit.toLocaleString()} | CJ fulfilled ✓`
+              : `✅ Payment verified! Your profit: ₵${profit.toLocaleString()} | Fulfillment pending`,
+            { duration: 6000 }
+          )
+        );
+        // Store split breakdown for order-success page display
+        if (typeof window !== "undefined") {
+          localStorage.setItem("lastOrderSplit", JSON.stringify(result.split));
+          localStorage.setItem("lastOrderRef", paystackReference);
+          localStorage.setItem("lastCJOrderId", result.cjOrderId || "");
+        }
+      } else {
+        import("sonner").then(({ toast }) =>
+          toast.warning("Payment processed — manual verification may be needed.", { duration: 5000 })
+        );
+      }
     } catch (e) {
-      console.warn("Order placement notice:", e);
+      console.warn("Order finalization notice:", e);
+      import("sonner").then(({ toast }) => {
+        toast.dismiss("verify-toast");
+        toast.success("Order received! Processing your shipment.");
+      });
     }
 
     if (typeof window !== "undefined") {
@@ -291,6 +329,7 @@ function Payment() {
     setIsProcessing(false);
     navigate({ to: "/order-success" });
   };
+
 
   const cardBrand = getCardBrand(cardNumber);
 

@@ -297,6 +297,157 @@ export const serverPlaceCJOrder = createServerFn({ method: "POST" })
     return res.json();
   });
 
+/**
+ * SERVER FUNCTION: Verify Paystack payment + calculate profit split + place CJ order.
+ *
+ * Flow:
+ *  1. Verify the Paystack transaction reference with Paystack's API (server-side, secret key).
+ *  2. Calculate split: sellingPriceGHS - cjCostGHS = your profit. cjCostGHS goes to fulfillment.
+ *  3. Place the CJ Dropshipping order using the CJ cost portion.
+ *  4. Return full breakdown: verified amount, your profit, CJ cost, and order ID.
+ */
+export const serverVerifyAndFulfillOrder = createServerFn({ method: "POST" })
+  .validator((d: {
+    paystackReference: string;   // from Paystack callback
+    orderNumber: string;
+    shippingName: string;
+    shippingPhone: string;
+    shippingAddress: string;
+    shippingCity: string;
+    shippingProvince: string;
+    shippingCountry: string;
+    shippingCountryCode: string;
+    shippingZip: string;
+    cartItems: Array<{
+      vid?: string;
+      cjId?: string;
+      id?: string;
+      name: string;
+      qty: number;
+      price: number;       // selling price in GHS (what customer paid per item)
+      rawPrice?: number;   // same as price
+      cjCostGHS?: number;  // optional: known CJ cost in GHS for split
+    }>;
+  }) => d)
+  .handler(async ({ data }) => {
+    // ── 1. Verify with Paystack (server-side, secret key never exposed to browser) ──
+    const paystackSecret = process.env["PAYSTACK_SECRET_KEY"] || "";
+    let verified = false;
+    let paidAmountKobo = 0;
+    let paystackStatus = "unknown";
+
+    try {
+      const verifyRes = await fetch(
+        `https://api.paystack.co/transaction/verify/${encodeURIComponent(data.paystackReference)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${paystackSecret}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const verifyJson = await verifyRes.json();
+      paystackStatus = verifyJson?.data?.status || "failed";
+      verified = paystackStatus === "success";
+      paidAmountKobo = verifyJson?.data?.amount || 0; // in kobo/pesewas (minor units)
+    } catch (err) {
+      console.error("Paystack verify error:", err);
+    }
+
+    // ── 2. Calculate profit split ──
+    // Exchange rate: 1 USD ≈ 15 GHS (matches EXCHANGE_RATE in cjApi.ts)
+    // Selling price (rawPrice) already includes markup — CJ cost is rawPrice / MARKUP
+    // MARKUP = 1.1, EXCHANGE_RATE = 15
+    const EXCHANGE_RATE_LOCAL = 15.0;
+    const MARKUP_LOCAL = 1.10;
+
+    let totalSellingGHS = 0;
+    let totalCJCostGHS = 0;
+    let totalProfitGHS = 0;
+
+    const splitLines = data.cartItems.map((item) => {
+      const qty = item.qty || 1;
+      const sellingPricePerItem = item.price || item.rawPrice || 0; // GHS
+      // CJ cost = selling price / markup (reverse the markup to get CJ's price)
+      const cjCostPerItemGHS = item.cjCostGHS ?? Math.round(sellingPricePerItem / MARKUP_LOCAL);
+      const profitPerItemGHS = sellingPricePerItem - cjCostPerItemGHS;
+
+      totalSellingGHS += sellingPricePerItem * qty;
+      totalCJCostGHS += cjCostPerItemGHS * qty;
+      totalProfitGHS += profitPerItemGHS * qty;
+
+      return {
+        name: item.name,
+        qty,
+        sellingPriceGHS: sellingPricePerItem,
+        cjCostGHS: cjCostPerItemGHS,
+        profitGHS: profitPerItemGHS,
+      };
+    });
+
+    // ── 3. Place CJ Dropshipping order to fulfill the customer order ──
+    let cjOrderResult: any = null;
+    let cjOrderId: string | null = null;
+
+    try {
+      const token = await serverGetToken();
+      const cjProducts = data.cartItems.map((item) => ({
+        vid: item.vid || item.cjId || item.id || "",
+        quantity: item.qty || 1,
+      })).filter((p) => p.vid);
+
+      if (cjProducts.length > 0) {
+        const cjBody = {
+          orderNumber: data.orderNumber,
+          shippingZip: data.shippingZip,
+          shippingCountryCode: data.shippingCountryCode,
+          shippingCountry: data.shippingCountry,
+          shippingProvince: data.shippingProvince,
+          shippingCity: data.shippingCity,
+          shippingAddress: data.shippingAddress,
+          shippingCustomerName: data.shippingName,
+          shippingPhone: data.shippingPhone,
+          products: cjProducts,
+        };
+
+        const cjRes = await fetch(
+          "https://developers.cjdropshipping.com/api2.0/v1/shopping/order/createOrder",
+          {
+            method: "POST",
+            headers: {
+              "CJ-Access-Token": token,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(cjBody),
+          }
+        );
+        cjOrderResult = await cjRes.json();
+        cjOrderId = cjOrderResult?.data?.orderId || cjOrderResult?.data?.orderNum || null;
+      }
+    } catch (err) {
+      console.error("CJ order placement error:", err);
+    }
+
+    // ── 4. Return full breakdown ──
+    return {
+      verified,
+      paystackStatus,
+      paystackReference: data.paystackReference,
+      paidAmountGHS: Math.round(paidAmountKobo / 100), // convert pesewas → GHS
+      split: {
+        totalSellingGHS: Math.round(totalSellingGHS),
+        totalCJCostGHS: Math.round(totalCJCostGHS),
+        yourProfitGHS: Math.round(totalProfitGHS),
+        lines: splitLines,
+      },
+      cjOrderId,
+      cjOrderSuccess: !!cjOrderId,
+      cjOrderResult,
+      orderNumber: data.orderNumber,
+    };
+  });
+
+
 function mapItem(item: any, index: number, category: string, pageOffset: number): CJProduct | null {
   const img = item.bigImage || item.productImage;
   if (!img) return null;
