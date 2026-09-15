@@ -537,6 +537,161 @@ export const serverVerifyAndFulfillOrder = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * SERVER: Charge a card directly via Paystack /charge API — no popup.
+ * Returns status: 'success' | 'send_otp' | 'send_birthday' | 'send_pin' | 'failed' | 'error'
+ */
+export const serverChargeCard = createServerFn({ method: "POST" })
+  .validator((d: {
+    email: string;
+    amountGHS: number;
+    cardNumber: string;
+    expiryMonth: string;
+    expiryYear: string;
+    cvv: string;
+    reference: string;
+  }) => d)
+  .handler(async ({ data }) => {
+    const secret = process.env["PAYSTACK_SECRET_KEY"] || "";
+    try {
+      const res = await fetch("https://api.paystack.co/charge", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email,
+          amount: Math.round(data.amountGHS * 100), // convert GHS → pesewas
+          currency: "GHS",
+          reference: data.reference,
+          card: {
+            number: data.cardNumber.replace(/\s/g, ""),
+            cvv: data.cvv,
+            expiry_month: data.expiryMonth,
+            expiry_year: data.expiryYear,
+          },
+        }),
+      });
+      const json = await res.json();
+      return {
+        status: json.data?.status || (json.status ? "success" : "failed"),
+        reference: json.data?.reference || data.reference,
+        message: json.data?.message || json.message || "",
+        displayText: json.data?.display_text || "",
+        paystackStatus: json.status,
+        raw: json,
+      };
+    } catch (err: any) {
+      return { status: "error", message: err?.message || "Network error", reference: data.reference, paystackStatus: false, raw: null };
+    }
+  });
+
+/**
+ * SERVER: Submit OTP for 3DS card verification — no popup.
+ */
+export const serverSubmitOtp = createServerFn({ method: "POST" })
+  .validator((d: { otp: string; reference: string }) => d)
+  .handler(async ({ data }) => {
+    const secret = process.env["PAYSTACK_SECRET_KEY"] || "";
+    try {
+      const res = await fetch("https://api.paystack.co/charge/submit_otp", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ otp: data.otp, reference: data.reference }),
+      });
+      const json = await res.json();
+      return {
+        status: json.data?.status || (json.status ? "success" : "failed"),
+        reference: json.data?.reference || data.reference,
+        message: json.data?.message || json.message || "",
+        displayText: json.data?.display_text || "",
+        paystackStatus: json.status,
+        raw: json,
+      };
+    } catch (err: any) {
+      return { status: "error", message: err?.message || "Network error", reference: data.reference, paystackStatus: false, raw: null };
+    }
+  });
+
+/**
+ * SERVER: Charge Mobile Money (MTN/Telecel) directly — triggers USSD prompt on customer's phone.
+ */
+export const serverChargeMobileMoney = createServerFn({ method: "POST" })
+  .validator((d: {
+    email: string;
+    amountGHS: number;
+    phone: string;
+    provider: string; // "mtn" | "vod" (Telecel/Vodafone)
+    reference: string;
+  }) => d)
+  .handler(async ({ data }) => {
+    const secret = process.env["PAYSTACK_SECRET_KEY"] || "";
+    const cleanPhone = data.phone.replace(/\D/g, "");
+    // Paystack expects full number with country code but without +
+    const fullPhone = cleanPhone.startsWith("0")
+      ? "233" + cleanPhone.slice(1)
+      : cleanPhone.startsWith("233")
+        ? cleanPhone
+        : "233" + cleanPhone;
+    try {
+      const res = await fetch("https://api.paystack.co/charge", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email,
+          amount: Math.round(data.amountGHS * 100),
+          currency: "GHS",
+          reference: data.reference,
+          mobile_money: {
+            phone: fullPhone,
+            provider: data.provider, // "mtn" or "vod"
+          },
+        }),
+      });
+      const json = await res.json();
+      return {
+        status: json.data?.status || (json.status ? "send_otp" : "failed"),
+        reference: json.data?.reference || data.reference,
+        message: json.data?.message || json.message || "",
+        displayText: json.data?.display_text || "",
+        paystackStatus: json.status,
+        raw: json,
+      };
+    } catch (err: any) {
+      return { status: "error", message: err?.message || "Network error", reference: data.reference, paystackStatus: false, raw: null };
+    }
+  });
+
+/**
+ * SERVER: Poll / verify a Paystack transaction reference.
+ */
+export const serverVerifyPaystackRef = createServerFn({ method: "GET" })
+  .validator((d: string) => d)
+  .handler(async ({ data: reference }) => {
+    const secret = process.env["PAYSTACK_SECRET_KEY"] || "";
+    try {
+      const res = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+        headers: { Authorization: `Bearer ${secret}` },
+      });
+      const json = await res.json();
+      return {
+        verified: json.data?.status === "success",
+        status: json.data?.status || "unknown",
+        amount: json.data?.amount || 0,
+        reference,
+      };
+    } catch {
+      return { verified: false, status: "error", amount: 0, reference };
+    }
+  });
+
 
 function mapItem(item: any, index: number, category: string, pageOffset: number): CJProduct | null {
   const img = item.bigImage || item.productImage;
