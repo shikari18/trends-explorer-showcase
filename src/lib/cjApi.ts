@@ -9,58 +9,58 @@ export const MARKUP = 1.1;
 
 let _cacheData: Record<string, CJProduct[]> | null = null;
 
-function getCacheProducts(): Record<string, CJProduct[]> {
+export async function loadServerCache(): Promise<Record<string, CJProduct[]>> {
   if (_cacheData && Object.keys(_cacheData).length > 0) return _cacheData;
   if (typeof window === "undefined") {
     try {
-      const fs = require("fs");
-      const path = require("path");
+      const fs = await import(/* @vite-ignore */ "node:fs");
+      const path = await import(/* @vite-ignore */ "node:path");
       const candidatePaths = [
         path.join(process.cwd(), "public", "cjCache.json"),
         path.join(process.cwd(), "src", "lib", "cjCache.json"),
-        path.join(__dirname, "public", "cjCache.json"),
-        path.join(__dirname, "..", "public", "cjCache.json"),
-        path.join(__dirname, "..", "..", "public", "cjCache.json"),
       ];
       for (const filePath of candidatePaths) {
         if (fs.existsSync(filePath)) {
           const json = JSON.parse(fs.readFileSync(filePath, "utf-8"));
           if (json.products && Object.keys(json.products).length > 0) {
             _cacheData = json.products as Record<string, CJProduct[]>;
+            console.log(`[CJ Catalog] Loaded ${Object.values(_cacheData).flat().length} products on server from ${filePath}`);
             return _cacheData;
           }
         }
       }
     } catch (e) {
-      console.error("Error reading cjCache.json on server:", e);
+      console.error("[CJ Catalog] Error reading cjCache.json on server:", e);
     }
   }
   return _cacheData || {};
 }
 
 export async function ensureClientCacheLoaded(): Promise<Record<string, CJProduct[]>> {
-  if (_cacheData) return _cacheData;
+  if (_cacheData && Object.keys(_cacheData).length > 0) return _cacheData;
   if (typeof window !== "undefined") {
     try {
       const res = await fetch("/cjCache.json");
       const json = await res.json();
-      _cacheData = (json.products || {}) as Record<string, CJProduct[]>;
-      return _cacheData;
+      if (json.products && Object.keys(json.products).length > 0) {
+        _cacheData = json.products as Record<string, CJProduct[]>;
+        return _cacheData;
+      }
     } catch (e) {
-      console.error("Failed to fetch /cjCache.json on client:", e);
+      console.error("[CJ Catalog] Failed to fetch /cjCache.json on client:", e);
     }
   }
-  return getCacheProducts();
+  return loadServerCache();
 }
 
-export function getAllCachedProducts(): CJProduct[] {
-  const cache = (_cacheData && Object.keys(_cacheData).length > 0) ? _cacheData : getCacheProducts();
+export function getAllCachedProducts(customCache?: Record<string, CJProduct[]>): CJProduct[] {
+  const cache = customCache || _cacheData || {};
   return Object.values(cache).flat();
 }
 
-function getInterleavedProducts(): CJProduct[] {
-  const cache = (_cacheData && Object.keys(_cacheData).length > 0) ? _cacheData : getCacheProducts();
-  const categoryArrays = Object.values(cache).filter((arr) => arr.length > 0);
+export function getInterleavedProducts(customCache?: Record<string, CJProduct[]>): CJProduct[] {
+  const cache = customCache || _cacheData || {};
+  const categoryArrays = Object.values(cache).filter((arr) => Array.isArray(arr) && arr.length > 0);
   if (categoryArrays.length === 0) return [];
   const maxLen = Math.max(...categoryArrays.map((arr) => arr.length));
   const result: CJProduct[] = [];
@@ -235,15 +235,15 @@ const serverFetchCategoryPage = createServerFn({ method: "GET" })
     } catch {}
 
     // 2. High-performance server-side catalog: serve from 52,827 CJ products!
-    const cache = getCacheProducts();
+    const cache = await loadServerCache();
     let productList: CJProduct[] = [];
 
     if (data.category === "Random" || data.category === "All") {
-      productList = getInterleavedProducts();
+      productList = getInterleavedProducts(cache);
     } else if (cache[data.category] && cache[data.category].length > 0) {
       productList = cache[data.category];
     } else {
-      productList = getAllCachedProducts();
+      productList = getAllCachedProducts(cache);
     }
 
     const pageSize = data.pageSize || 40;
@@ -284,7 +284,8 @@ const serverSearchCJProducts = createServerFn({ method: "GET" })
     } catch {}
 
     // 2. Server-side search across 52,827 CJ products
-    const all = getAllCachedProducts();
+    const cache = await loadServerCache();
+    const all = getAllCachedProducts(cache);
     const matches = filterRelevantProducts(all, data.query);
     const pageSize = data.pageSize || 40;
     const start = Math.max(0, (data.page - 1) * pageSize);
@@ -326,7 +327,8 @@ const serverFetchProductDetail = createServerFn({ method: "GET" })
     } catch {}
 
     // 2. Lookup from 52,827 CJ products
-    const cached = getProductById(cleanPid) || getAllCachedProducts().find((p) => p.cjId === cleanPid || p.id === cleanPid);
+    const cache = await loadServerCache();
+    const cached = getProductById(cleanPid) || getAllCachedProducts(cache).find((p) => p.cjId === cleanPid || p.id === cleanPid);
     if (cached) {
       return {
         result: true,
@@ -757,13 +759,13 @@ export async function fetchCategoryPage(
   }
 
   // Fallback to cache loop if live API is unreachable
-  const cache = getCacheProducts();
-  let rawList = getAllCachedProducts();
-  if (category === "Random") {
-    rawList = getInterleavedProducts();
+  const cache = await ensureClientCacheLoaded();
+  let rawList = getAllCachedProducts(cache);
+  if (category === "Random" || category === "All") {
+    rawList = getInterleavedProducts(cache);
   } else if (category.includes("Express") || category.includes("Vendor") || category.includes("1-2")) {
     // Local Ghana Express Stock: tag all products as local 1-2 day express vendor products
-    rawList = getAllCachedProducts().map((p) => ({
+    rawList = getAllCachedProducts(cache).map((p) => ({
       ...p,
       brand: p.brand || "Ghana Local Vendor",
       vendorName: p.vendorName || `${p.brand} Ghana Store`,
