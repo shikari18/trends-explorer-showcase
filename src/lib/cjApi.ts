@@ -429,7 +429,7 @@ export const serverVerifyAndFulfillOrder = createServerFn({ method: "POST" })
   }) => d)
   .handler(async ({ data }) => {
     // ── 1. Verify with Paystack (server-side, secret key never exposed to browser) ──
-    const paystackSecret = process.env["PAYSTACK_SECRET_KEY"] || "";
+    const paystackSecret = PAYSTACK_SECRET;
     let verified = false;
     let paidAmountKobo = 0;
     let paystackStatus = "unknown";
