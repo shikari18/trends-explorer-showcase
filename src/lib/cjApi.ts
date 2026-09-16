@@ -681,7 +681,12 @@ export const serverChargeMobileMoney = createServerFn({ method: "POST" })
  * SERVER: Poll / verify a Paystack transaction reference.
  */
 export const serverVerifyPaystackRef = createServerFn({ method: "GET" })
-  .validator((d: string) => d)
+  .validator((d: any) => {
+    if (typeof d === "string") return d;
+    if (d && typeof d === "object" && d.reference) return String(d.reference);
+    if (d && typeof d === "object" && d.data) return String(d.data);
+    return String(d || "");
+  })
   .handler(async ({ data: reference }) => {
     const secret = PAYSTACK_SECRET;
     try {

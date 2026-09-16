@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft, ShieldCheck, Lock, Check, CreditCard, Tag, Loader2,
-  Smartphone, AlertCircle, CheckCircle2, XCircle, RefreshCw,
+  Smartphone, AlertCircle, CheckCircle2, XCircle, RefreshCw, PhoneCall,
 } from "lucide-react";
 import { PhoneFrame, StatusBar, HomeIndicator } from "@/components/phone/PhoneFrame";
 import { Progress } from "./checkout";
@@ -50,6 +50,7 @@ function Payment() {
   const [currentRef, setCurrentRef] = useState("");
   const [momoPolling, setMomoPolling] = useState(false);
   const [isSubmittingOtp, setIsSubmittingOtp] = useState(false);
+  const [isCheckingManually, setIsCheckingManually] = useState(false);
   const pollInterval = useRef<any>(null);
 
   // Helper to update payment status and persist active state across app switching
@@ -236,11 +237,34 @@ function Payment() {
     setTimeout(() => navigate({ to: "/order-success" }), 1200);
   };
 
+  // ── Instant recheck when user switches back from dialer to tab ──
+  useEffect(() => {
+    if (payStatus !== "waiting_momo" || !currentRef) return;
+    const handleRecheck = async () => {
+      if (document.visibilityState === "visible") {
+        try {
+          const res = await serverVerifyPaystackRef({ data: currentRef });
+          if (res.verified || res.status === "success") {
+            if (pollInterval.current) clearInterval(pollInterval.current);
+            setMomoPolling(false);
+            await finalizeOrder(currentRef);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener("focus", handleRecheck);
+    document.addEventListener("visibilitychange", handleRecheck);
+    return () => {
+      window.removeEventListener("focus", handleRecheck);
+      document.removeEventListener("visibilitychange", handleRecheck);
+    };
+  }, [payStatus, currentRef]);
+
   // ── Poll MoMo status until success or failure ──
   const startMomoPoll = (reference: string) => {
     setMomoPolling(true);
     let attempts = 0;
-    const maxAttempts = 36; // 36 * 5s = 3 minutes polling for USSD PIN entry
+    const maxAttempts = 60; // 60 * 5s = 5 minutes polling for USSD PIN entry / *170# approval
     if (pollInterval.current) clearInterval(pollInterval.current);
     pollInterval.current = setInterval(async () => {
       attempts++;
@@ -253,7 +277,7 @@ function Payment() {
         } else if (res.status === "failed" || attempts >= maxAttempts) {
           // CRITICAL: NEVER exit or fail on "abandoned" or "pending" or "ongoing" or "unknown"!
           // Paystack transaction/verify reports "abandoned" on pending charges until the user enters PIN.
-          // Only stop when Paystack explicitly reports "failed" or max 3-minute attempts is reached.
+          // Only stop when Paystack explicitly reports "failed" or max 5-minute attempts is reached.
           clearInterval(pollInterval.current);
           setMomoPolling(false);
           const f = friendlyMessage(res.status, "Payment was not approved in time. Please try again.");
@@ -267,6 +291,60 @@ function Payment() {
         }
       }
     }, 5000);
+  };
+
+  // ── Manual check button for user after approving in *170# ──
+  const handleManualCheckStatus = async () => {
+    if (!currentRef || isCheckingManually) return;
+    setIsCheckingManually(true);
+    try {
+      const res = await serverVerifyPaystackRef({ data: currentRef });
+      if (res.verified || res.status === "success") {
+        if (pollInterval.current) clearInterval(pollInterval.current);
+        setMomoPolling(false);
+        await finalizeOrder(currentRef);
+      } else if (res.status === "failed") {
+        if (pollInterval.current) clearInterval(pollInterval.current);
+        setMomoPolling(false);
+        const f = friendlyMessage(res.status, "Payment was declined or failed.");
+        updatePayState(f.type, f.text, currentRef);
+      } else {
+        const { toast } = await import("sonner");
+        toast.info("Awaiting approval. If you just entered your PIN in *170#, please wait 3-5 seconds and tap again.");
+      }
+    } catch {
+      const { toast } = await import("sonner");
+      toast.error("Could not check payment status. Please check your internet connection.");
+    } finally {
+      setIsCheckingManually(false);
+    }
+  };
+
+  // ── Fallback to official Paystack popup modal if network push fails ──
+  const handleOpenPaystackPopup = async () => {
+    if (pollInterval.current) clearInterval(pollInterval.current);
+    setMomoPolling(false);
+    try {
+      await new Promise<void>((resolve) => {
+        if ((window as any).PaystackPop) return resolve();
+        const s = document.createElement("script");
+        s.src = "https://js.paystack.co/v1/inline.js";
+        s.onload = () => resolve();
+        s.onerror = () => resolve();
+        document.head.appendChild(s);
+      });
+      const key = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string) || "pk_live_4ee89791424f3443c50d3d7295a996a29fdeeeec";
+      const pop = (window as any).PaystackPop;
+      if (pop?.setup) {
+        const handler = pop.setup({
+          key, email: userEmail,
+          amount: Math.round(total * 100), currency: "GHS", ref: currentRef || makeRef(),
+          onClose: () => {},
+          callback: (response: any) => finalizeOrder(response?.reference || currentRef),
+        });
+        handler?.openIframe?.();
+      }
+    } catch {}
   };
 
   // ── Main Pay Handler ──
@@ -435,32 +513,90 @@ function Payment() {
 
                 {/* Waiting for MoMo approval */}
                 {payStatus === "waiting_momo" && (
-                  <div className="flex flex-col items-center gap-3 p-6 rounded-3xl text-center" style={{ background: method === "momo" ? "#FFF9E6" : "#FDE8E9", border: `1px solid ${method === "momo" ? "#FFE082" : "#F9A8A8"}` }}>
-                    <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: method === "momo" ? "#FFCC00" : "#E30613" }}>
-                      <Smartphone size={26} color={method === "momo" ? "#111" : "#fff"} className="animate-pulse" />
+                  <div className="flex flex-col items-center gap-3.5 p-5 rounded-3xl text-center" style={{ background: method === "momo" ? "#FFFDF5" : "#FDF8F8", border: `1.5px solid ${method === "momo" ? "#FFCC00" : "#F9A8A8"}` }}>
+                    <div className="rounded-full flex items-center justify-center shadow-sm" style={{ background: method === "momo" ? "#FFCC00" : "#E30613", width: 52, height: 52 }}>
+                      <Smartphone size={24} color={method === "momo" ? "#111" : "#fff"} className="animate-pulse" />
                     </div>
-                    <div className="font-bold text-sm" style={{ color: method === "momo" ? "#7A5000" : "#8B0000" }}>
-                      {method === "momo" ? "📲 MTN MoMo Prompt Sent!" : "📲 Telecel Prompt Sent!"}
+                    <div>
+                      <div className="font-bold text-sm" style={{ color: method === "momo" ? "#7A5000" : "#8B0000" }}>
+                        {method === "momo" ? "📲 MTN MoMo Authorization" : "📲 Telecel Authorization"}
+                      </div>
+                      <div className="text-xs text-gray-600 mt-0.5">
+                        Amount: <strong className="text-gray-900">₵{total.toLocaleString()}</strong> &bull; <span className="font-semibold text-gray-800">{momoNumber}</span>
+                      </div>
                     </div>
-                    <div className="text-xs leading-relaxed" style={{ color: method === "momo" ? "#7A5000" : "#8B0000" }}>
-                      {statusMessage || `Approve the ₵${total.toLocaleString()} request on your phone to complete payment.`}
+
+                    {/* Step-by-step instructions */}
+                    <div className="bg-white rounded-2xl p-3.5 text-xs text-left space-y-2 w-full border border-gray-100 shadow-sm">
+                      <div className="font-bold text-gray-900 flex items-center gap-1.5 text-[12px]">
+                        <AlertCircle size={14} className="text-amber-500 shrink-0" />
+                        {method === "momo" ? "Didn't receive the prompt on your screen?" : "Didn't receive the prompt?"}
+                      </div>
+                      {method === "momo" ? (
+                        <div className="text-[11.5px] text-gray-600 space-y-1.5 leading-relaxed">
+                          <p className="text-gray-700">MTN pop-ups can be delayed by network congestion. You can approve immediately via USSD:</p>
+                          <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-2.5 font-medium text-amber-950 space-y-1">
+                            <div>1. Dial <strong className="font-bold text-black">*170#</strong></div>
+                            <div>2. Choose <strong className="font-bold text-black">6 (My Wallet)</strong></div>
+                            <div>3. Choose <strong className="font-bold text-black">3 (My Approvals)</strong></div>
+                            <div>4. Enter your MoMo PIN & select <strong>1 to Approve</strong></div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-[11.5px] text-gray-600 space-y-1.5 leading-relaxed">
+                          <p className="text-gray-700">Telecel prompt delayed? Approve directly:</p>
+                          <div className="bg-red-50 border border-red-200/80 rounded-xl p-2.5 font-medium text-red-950 space-y-1">
+                            <div>1. Dial <strong className="font-bold text-black">*110#</strong></div>
+                            <div>2. Check pending approvals & enter your PIN</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="bg-white/70 rounded-2xl p-3 text-xs text-left space-y-1 w-full">
-                      <div className="font-bold flex items-center gap-1.5"><AlertCircle size={12} />On your phone:</div>
-                      <div>1. Check for a USSD prompt or notification</div>
-                      <div>2. Enter your Mobile Money PIN</div>
-                      <div>3. Confirm the payment — this screen will update automatically</div>
+
+                    {/* Action buttons */}
+                    <div className="w-full space-y-2">
+                      <a
+                        href={method === "momo" ? "tel:*170%23" : "tel:*110%23"}
+                        className="w-full py-2.5 px-4 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-opacity active:opacity-80"
+                        style={{ background: method === "momo" ? "#111" : "#E30613" }}
+                      >
+                        <PhoneCall size={14} />
+                        {method === "momo" ? "Tap to Dial *170# to Approve" : "Tap to Dial *110# to Approve"}
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={handleManualCheckStatus}
+                        disabled={isCheckingManually}
+                        className="w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border border-gray-200 bg-white hover:bg-gray-50 text-gray-800 shadow-xs"
+                      >
+                        <RefreshCw size={13} className={isCheckingManually ? "animate-spin text-blue-600" : "text-gray-500"} />
+                        {isCheckingManually ? "Checking authorization..." : "I've Approved — Check Status Now"}
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                      <Loader2 size={12} className="animate-spin" />
-                      Checking for approval... ({momoNumber})
+
+                    <div className="flex items-center gap-2 text-[11px] text-gray-500 pt-0.5">
+                      <Loader2 size={12} className="animate-spin text-amber-600" />
+                      Auto-checking every 5s (updates instantly when approved)
                     </div>
-                    <button
-                      onClick={() => { if (pollInterval.current) clearInterval(pollInterval.current); updatePayState("idle", ""); }}
-                      className="text-xs text-red-500 font-semibold mt-1 hover:underline"
-                    >
-                      Cancel & try again
-                    </button>
+
+                    <div className="flex items-center justify-center gap-3 text-xs pt-1">
+                      <button
+                        type="button"
+                        onClick={handleOpenPaystackPopup}
+                        className="text-blue-600 font-semibold hover:underline"
+                      >
+                        Use Paystack Portal instead
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => { if (pollInterval.current) clearInterval(pollInterval.current); updatePayState("idle", ""); }}
+                        className="text-red-500 font-semibold hover:underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 )}
 
