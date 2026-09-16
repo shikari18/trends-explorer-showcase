@@ -546,6 +546,41 @@ export const serverVerifyAndFulfillOrder = createServerFn({ method: "POST" })
   });
 
 /**
+ * SERVER: Initialize a Paystack transaction and obtain access_code & authorization_url.
+ */
+export const serverInitializePaystack = createServerFn({ method: "POST" })
+  .validator((d: { email: string; amountGHS: number; reference: string; metadata?: any }) => d)
+  .handler(async ({ data }) => {
+    const secret = PAYSTACK_SECRET;
+    try {
+      const res = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email,
+          amount: Math.round(data.amountGHS * 100), // convert to pesewas
+          currency: "GHS",
+          reference: data.reference,
+          metadata: data.metadata,
+        }),
+      });
+      const json = await res.json();
+      return {
+        status: !!json.status,
+        message: json.message || "",
+        authorizationUrl: json.data?.authorization_url || null,
+        accessCode: json.data?.access_code || null,
+        reference: json.data?.reference || data.reference,
+      };
+    } catch (err: any) {
+      return { status: false, message: err?.message || "Could not initialize", authorizationUrl: null, accessCode: null, reference: data.reference };
+    }
+  });
+
+/**
  * SERVER: Charge a card directly via Paystack /charge API — no popup.
  * Returns status: 'success' | 'send_otp' | 'send_birthday' | 'send_pin' | 'failed' | 'error'
  */
