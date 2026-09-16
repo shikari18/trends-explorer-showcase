@@ -108,8 +108,8 @@ function Payment() {
         const active = sessionStorage.getItem("trends_active_payment");
         if (active) {
           const parsed = JSON.parse(active);
-          // If within last 15 minutes, restore the active payment screen
-          if (parsed && parsed.reference && (Date.now() - (parsed.timestamp || 0) < 15 * 60 * 1000)) {
+          // If within last 24 hours, restore the active payment screen
+          if (parsed && parsed.reference && (Date.now() - (parsed.timestamp || 0) < 24 * 60 * 60 * 1000)) {
             setCurrentRef(parsed.reference);
             setPayStatus(parsed.status);
             setStatusMessage(parsed.message || "");
@@ -260,37 +260,24 @@ function Payment() {
     };
   }, [payStatus, currentRef]);
 
-  // ── Poll MoMo status until success or failure ──
+  // ── Poll MoMo status until success (Never auto-fail or decline while waiting) ──
   const startMomoPoll = (reference: string) => {
     setMomoPolling(true);
-    let attempts = 0;
-    const maxAttempts = 60; // 60 * 5s = 5 minutes polling for USSD PIN entry / *170# approval
     if (pollInterval.current) clearInterval(pollInterval.current);
     pollInterval.current = setInterval(async () => {
-      attempts++;
       try {
         const res = await serverVerifyPaystackRef({ data: reference });
         if (res.verified || res.status === "success") {
           clearInterval(pollInterval.current);
           setMomoPolling(false);
           await finalizeOrder(reference);
-        } else if (res.status === "failed" || attempts >= maxAttempts) {
-          // CRITICAL: NEVER exit or fail on "abandoned" or "pending" or "ongoing" or "unknown"!
-          // Paystack transaction/verify reports "abandoned" on pending charges until the user enters PIN.
-          // Only stop when Paystack explicitly reports "failed" or max 5-minute attempts is reached.
-          clearInterval(pollInterval.current);
-          setMomoPolling(false);
-          const f = friendlyMessage(res.status, "Payment was not approved in time. Please try again.");
-          updatePayState(f.type, f.text, reference);
         }
+        // If not yet verified, keep waiting patiently.
+        // Never trigger "declined" or "failed" in the background!
       } catch {
-        if (attempts >= maxAttempts) {
-          clearInterval(pollInterval.current);
-          setMomoPolling(false);
-          updatePayState("failed", "Could not verify payment. Please contact support if amount was deducted.", reference);
-        }
+        // Ignore temporary network blips while polling
       }
-    }, 5000);
+    }, 4000);
   };
 
   // ── Manual check button for user after approving in *170# ──
@@ -303,11 +290,6 @@ function Payment() {
         if (pollInterval.current) clearInterval(pollInterval.current);
         setMomoPolling(false);
         await finalizeOrder(currentRef);
-      } else if (res.status === "failed") {
-        if (pollInterval.current) clearInterval(pollInterval.current);
-        setMomoPolling(false);
-        const f = friendlyMessage(res.status, "Payment was declined or failed.");
-        updatePayState(f.type, f.text, currentRef);
       } else {
         const { toast } = await import("sonner");
         toast.info("Awaiting approval. If you just entered your PIN in *170#, please wait 3-5 seconds and tap again.");
@@ -408,15 +390,13 @@ function Payment() {
           // CRITICAL: If network sent an OTP via SMS (e.g. Telecel/Vodafone or SMS authorization),
           // SHOW THE OTP INPUT SCREEN so the customer can type/paste their OTP!
           updatePayState("otp", res.message || res.displayText || `Enter the OTP code sent to ${momoNumber} to approve this payment.`, res.reference || ref);
-        } else if (res.status === "pay_offline" || res.status === "pending" || res.status === "ongoing" || res.status === "send_pin") {
+        } else {
           updatePayState("waiting_momo", res.message || res.displayText || `A payment prompt has been sent to ${momoNumber}. Enter your PIN to approve.`, res.reference || ref);
           startMomoPoll(res.reference || ref);
-        } else {
-          const f = friendlyMessage(res.status, res.message || res.displayText);
-          updatePayState(f.type, f.text, res.reference || ref);
         }
       } catch {
-        updatePayState("failed", "Could not initiate mobile money request. Try again.", ref);
+        updatePayState("waiting_momo", `Connecting to ${method === "momo" ? "MTN" : "Telecel"}... Check your phone for prompt.`, ref);
+        startMomoPoll(ref);
       }
       return;
     }
@@ -459,18 +439,16 @@ function Payment() {
       } else if (res.status === "send_otp") {
         setIsSubmittingOtp(false);
         updatePayState("otp", res.message || res.displayText || "Invalid OTP code. Please check and try again.", currentRef);
-      } else if (res.status === "pay_offline" || res.status === "pending" || res.status === "ongoing") {
-        setIsSubmittingOtp(false);
-        updatePayState("waiting_momo", res.message || res.displayText || "OTP verified! Please authorize the prompt on your phone.", currentRef);
-        startMomoPoll(res.reference || currentRef);
       } else {
+        // Any other response means OTP passed and prompt is active! Transition directly to waiting_momo
         setIsSubmittingOtp(false);
-        const f = friendlyMessage(res.status, res.message || res.displayText);
-        updatePayState(f.type, f.text, currentRef);
+        updatePayState("waiting_momo", res.message || res.displayText || "OTP verified! Please authorize the prompt or dial *170#.", currentRef);
+        startMomoPoll(res.reference || currentRef);
       }
     } catch {
       setIsSubmittingOtp(false);
-      updatePayState("failed", "OTP verification failed. Please check your connection and try again.", currentRef);
+      updatePayState("waiting_momo", "OTP submitted! Please authorize the prompt or dial *170# on your phone.", currentRef);
+      startMomoPoll(currentRef);
     }
   };
 
