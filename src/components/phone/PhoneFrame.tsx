@@ -24,7 +24,15 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
 }
 
 export function StatusBar() {
-  return <div style={{ height: 12 }} />;
+  return (
+    <div
+      className="w-full shrink-0 select-none pointer-events-none"
+      style={{
+        height: "max(env(safe-area-inset-top, 0px), 16px)",
+        minHeight: "max(env(safe-area-inset-top, 0px), 16px)",
+      }}
+    />
+  );
 }
 
 export function HomeIndicator() {

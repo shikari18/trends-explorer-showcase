@@ -112,6 +112,15 @@ function Checkout() {
         } catch {}
       }
 
+      // Restore previous shipping address if present
+      const savedAddress = localStorage.getItem("shippingAddress");
+      if (savedAddress) {
+        try {
+          const addr = JSON.parse(savedAddress);
+          setForm((f) => ({ ...f, ...addr }));
+        } catch {}
+      }
+
       loadGsiScript();
     }
   }, []);
@@ -253,12 +262,29 @@ function Checkout() {
   const tax = Math.round(subtotal * 0.075);
   const total = subtotal + tax + shipping;
 
-  const handleProceed = () => {
+  const isPhoneValid = form.phone.replace(/\D/g, "").length >= 9;
+  const isAddressValid = form.address.trim().length >= 3;
+  const isCityValid = form.city.trim().length >= 2;
+  const isRegionValid = form.province.trim().length >= 2;
+  const isDeliveryComplete = isPhoneValid && isAddressValid && isCityValid && isRegionValid;
+
+  const handleProceedToPayment = () => {
     if (!googleUser) {
       setShowSignInModal(true);
-    } else {
-      navigate({ to: "/payment" });
+      return;
     }
+    if (!isDeliveryComplete) {
+      setOrderError("Please complete all delivery steps to proceed.");
+      return;
+    }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("shippingAddress", JSON.stringify(form));
+    }
+    navigate({ to: "/payment" });
+  };
+
+  const handleProceed = () => {
+    handleProceedToPayment();
   };
 
   const handlePlaceOrder = async () => {
@@ -399,31 +425,147 @@ function Checkout() {
               </div>
             </div>
 
-            {/* Shipping Form */}
+            {/* Progressive Shipping Form */}
             <div className="px-5 mt-4">
-              <div className="p-4" style={{ borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <MapPin size={14} color="#0F62FE" />
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "#0F62FE", letterSpacing: 0.4, textTransform: "uppercase" }}>Delivery Details</div>
+              <div className="p-4" style={{ borderRadius: 24, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={15} color="#0F62FE" />
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#0F62FE", letterSpacing: 0.4, textTransform: "uppercase" }}>
+                      Delivery Details
+                    </div>
+                  </div>
+                  <div className="text-[11px] font-bold text-gray-400">
+                    {isDeliveryComplete ? "All steps done ✓" : !isPhoneValid ? "Step 1 of 4" : !isAddressValid ? "Step 2 of 4" : !isCityValid ? "Step 3 of 4" : "Step 4 of 4"}
+                  </div>
                 </div>
-                {[
-                  { key: "phone", label: "Phone Number", placeholder: "+233 XX XXX XXXX" },
-                  { key: "address", label: "Street Address", placeholder: "24 Oxford Street" },
-                  { key: "city", label: "City", placeholder: "Accra" },
-                  { key: "province", label: "Region / Province", placeholder: "Greater Accra" },
-                  { key: "zip", label: "Postal Code (optional)", placeholder: "00000" },
-                ].map(({ key, label, placeholder }) => (
-                  <div key={key} className="mb-3">
-                    <div style={{ fontSize: 11.5, fontWeight: 600, color: "#8A8A8A", marginBottom: 5, letterSpacing: 0.2 }}>{label}</div>
+
+                {/* Step 1: Phone Number (Always shows first) */}
+                <div className="mb-3 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>
+                      1. Phone Number
+                    </div>
+                    {isPhoneValid && (
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-in fade-in">
+                        <Check size={11} strokeWidth={3} /> Done
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 px-3.5 py-3 rounded-xl bg-[#F7F7F5] focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 transition-all" style={{ boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}>
+                    <span className="text-xs font-bold text-gray-500">🇬🇭 +233</span>
                     <input
-                      value={(form as any)[key]}
-                      onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      className="w-full outline-none"
-                      style={{ height: 44, padding: "0 14px", borderRadius: 14, background: "#F7F7F5", fontSize: 14, color: "#111", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                      placeholder="024 XXX XXXX"
+                      className="flex-1 bg-transparent text-sm font-bold text-gray-900 outline-none"
                     />
                   </div>
-                ))}
+                </div>
+
+                {/* Step 2: Street Address (Slides out once Phone is valid) */}
+                {isPhoneValid && (
+                  <div className="mb-3 animate-in fade-in slide-in-from-top-3 duration-300">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>
+                        2. Street Address
+                      </div>
+                      {isAddressValid && (
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-in fade-in">
+                          <Check size={11} strokeWidth={3} /> Done
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={form.address}
+                      onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                      placeholder="e.g. 24 Oxford Street, Osu"
+                      className="w-full px-3.5 py-3 rounded-xl bg-[#F7F7F5] focus:bg-white text-sm font-medium text-gray-900 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      style={{ boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}
+                    />
+                  </div>
+                )}
+
+                {/* Step 3: City (Slides out once Street Address is valid) */}
+                {isPhoneValid && isAddressValid && (
+                  <div className="mb-3 animate-in fade-in slide-in-from-top-3 duration-300">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>
+                        3. City / Town
+                      </div>
+                      {isCityValid && (
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-in fade-in">
+                          <Check size={11} strokeWidth={3} /> Done
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={form.city}
+                      onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                      placeholder="e.g. Accra, Kumasi, Tema, Takoradi"
+                      className="w-full px-3.5 py-3 rounded-xl bg-[#F7F7F5] focus:bg-white text-sm font-medium text-gray-900 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      style={{ boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}
+                    />
+                  </div>
+                )}
+
+                {/* Step 4: Region (Slides out once City is valid) */}
+                {isPhoneValid && isAddressValid && isCityValid && (
+                  <div className="mb-2 animate-in fade-in slide-in-from-top-3 duration-300">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>
+                        4. Region / Province
+                      </div>
+                      {isRegionValid && (
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-in fade-in">
+                          <Check size={11} strokeWidth={3} /> Done
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={form.province}
+                      onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))}
+                      placeholder="e.g. Greater Accra, Ashanti"
+                      className="w-full px-3.5 py-3 rounded-xl bg-[#F7F7F5] focus:bg-white text-sm font-medium text-gray-900 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      style={{ boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06)" }}
+                    />
+                    {/* Quick Region Chips */}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {["Greater Accra", "Ashanti", "Central", "Western", "Eastern", "Northern"].map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, province: r }))}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all"
+                          style={{
+                            background: form.province === r ? "#0F62FE" : "#F0F0EE",
+                            color: form.province === r ? "#fff" : "#555",
+                          }}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Continue to Payment button (Slides out directly under Region once all 4 steps are complete!) */}
+                {isDeliveryComplete && (
+                  <div className="mt-4 pt-3 border-t border-gray-100 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <button
+                      type="button"
+                      onClick={handleProceedToPayment}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#0F62FE] text-white font-bold text-sm shadow-lg shadow-blue-600/30 active:scale-[0.99] transition-all hover:bg-blue-700"
+                    >
+                      <span>Continue to Payment · ₵{total.toLocaleString()}</span>
+                      <ArrowLeft size={16} className="rotate-180" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -497,13 +639,13 @@ function Checkout() {
               <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>₵{total.toLocaleString()}</div>
             </div>
             <button
-              onClick={handlePlaceOrder}
+              onClick={handleProceedToPayment}
               disabled={placing}
               className="inline-flex items-center justify-center gap-2 px-5 disabled:opacity-50"
-              style={{ height: 52, borderRadius: 20, background: "#0F62FE", color: "#fff", fontSize: 14, fontWeight: 700, boxShadow: "0 12px 24px -8px rgba(15,98,254,0.5)" }}
+              style={{ height: 52, borderRadius: 20, background: isDeliveryComplete ? "#0F62FE" : "#333", color: "#fff", fontSize: 14, fontWeight: 700, boxShadow: isDeliveryComplete ? "0 12px 24px -8px rgba(15,98,254,0.5)" : "none" }}
             >
               {placing ? <Loader2 size={16} className="animate-spin" /> : null}
-              {placing ? "Processing..." : "Continue to Payment"}
+              {isDeliveryComplete ? "Continue to Payment" : "Complete Steps"}
             </button>
           </div>
         </div>

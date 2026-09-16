@@ -714,31 +714,8 @@ function Payment() {
               </div>
             )}
 
-            {/* Coupon */}
-            {payStatus === "idle" && (
-              <div className="px-5 mt-5">
-                <div className="p-4" style={{ borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-                  <div className="flex items-center gap-2 mb-2" style={{ fontSize: 13.5, fontWeight: 700, color: "#111" }}>
-                    <Tag size={15} color="#0F62FE" /> Discount Coupon
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input type="text" value={couponInput} onChange={e => setCouponInput(e.target.value)} placeholder="e.g. TRENDS10"
-                      disabled={couponApplied} className="flex-1 bg-gray-50 px-3.5 outline-none uppercase font-semibold text-xs rounded-xl"
-                      style={{ height: 42, border: "1px solid rgba(17,17,17,0.08)" }} />
-                    <button onClick={handleApplyCoupon} disabled={couponApplied || !couponInput.trim()}
-                      className="px-4 text-xs font-bold text-white rounded-xl disabled:opacity-50"
-                      style={{ height: 42, background: couponApplied ? "#34C759" : "#111" }}>
-                      {couponApplied ? "Applied ✓" : "Apply"}
-                    </button>
-                  </div>
-                  {couponApplied && <div className="mt-2 text-xs font-semibold text-emerald-600">✓ TRENDS10 — 10% discount applied!</div>}
-                  {couponError && <div className="mt-2 text-xs font-semibold text-red-500">{couponError}</div>}
-                </div>
-              </div>
-            )}
-
             {/* Summary */}
-            <div className="px-5 mt-4">
+            <div className="px-5 mt-5">
               <div className="p-4" style={{ borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
                 <div className="flex items-center justify-between">
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>Order Summary</div>
@@ -753,18 +730,6 @@ function Payment() {
                 <div className="flex items-center justify-between">
                   <span style={{ fontSize: 14, color: "#666" }}>Total</span>
                   <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>₵{total.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Security note */}
-            <div className="px-5 mt-3">
-              <div className="flex items-center gap-3 p-3.5" style={{ borderRadius: 18, background: "rgba(255,255,255,0.75)", backdropFilter: "blur(20px)", boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.05)" }}>
-                <div className="flex items-center justify-center" style={{ width: 34, height: 34, borderRadius: 12, background: "rgba(52,199,89,0.12)" }}>
-                  <Lock size={15} color="#34C759" />
-                </div>
-                <div style={{ fontSize: 11.5, color: "#666", lineHeight: 1.5 }}>
-                  PCI-DSS Level 1. Direct Paystack banking integration with real-time verification.
                 </div>
               </div>
             </div>

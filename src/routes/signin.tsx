@@ -229,53 +229,6 @@ function SignIn() {
                 </button>
               </div>
 
-              {/* Security card */}
-              <div
-                className="mt-12 flex items-start gap-3 p-4 max-w-sm mx-auto"
-                style={{
-                  borderRadius: 20,
-                  background: "rgba(255,255,255,0.7)",
-                  backdropFilter: "blur(20px)",
-                  boxShadow:
-                    "0 10px 30px -14px rgba(17,17,17,0.10), inset 0 0 0 1px rgba(17,17,17,0.04)",
-                }}
-              >
-                <div
-                  className="flex items-center justify-center flex-none"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 12,
-                    background: "rgba(15,98,254,0.08)",
-                  }}
-                >
-                  <ShieldCheck size={18} strokeWidth={2} color="#0F62FE" />
-                </div>
-                <div className="flex-1">
-                  <div
-                    style={{
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      color: "#111111",
-                      letterSpacing: -0.1,
-                    }}
-                  >
-                    Protected Sign-In
-                  </div>
-                  <div
-                    className="mt-0.5"
-                    style={{
-                      fontSize: 12.5,
-                      lineHeight: 1.4,
-                      color: "#666666",
-                      letterSpacing: -0.05,
-                    }}
-                  >
-                    Your account is protected with encrypted SSL and official OAuth identity standards.
-                  </div>
-                </div>
-              </div>
-
               {/* Footer */}
               <div
                 className="text-center mt-8"
