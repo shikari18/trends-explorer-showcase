@@ -86,6 +86,10 @@ function Payment() {
   const discountAmount = subtotal * discountPercent;
   const total = Math.max(0, subtotal - discountAmount);
 
+  // Quick test toggle (lets user test with ₵5 without exceeding MTN's standard wallet limit)
+  const [useTestAmount, setUseTestAmount] = useState(false);
+  const activeTotal = useTestAmount ? 5 : total;
+
   const handleApplyCoupon = () => {
     setCouponError("");
     if (couponInput.trim().toUpperCase() === "TRENDS10") {
@@ -183,7 +187,7 @@ function Payment() {
       const initRes = await serverInitializePaystack({
         data: {
           email: customerEmail,
-          amountGHS: total,
+          amountGHS: activeTotal,
           reference: ref,
           metadata: {
             custom_fields: [
@@ -217,7 +221,7 @@ function Payment() {
         const setupConfig: any = {
           key: publicKey,
           email: customerEmail,
-          amount: Math.round(total * 100),
+          amount: Math.round(activeTotal * 100),
           currency: "GHS",
           ref,
           channels: ["card", "mobile_money", "bank"],
@@ -259,10 +263,6 @@ function Payment() {
       setStatusMessage("Could not connect to Paystack. Please check your connection.");
     }
   };
-
-  // Quick test toggle (lets user test with ₵5 without exceeding MTN's standard wallet limit)
-  const [useTestAmount, setUseTestAmount] = useState(false);
-  const activeTotal = useTestAmount ? 5 : total;
 
   return (
     <PhoneFrame>
