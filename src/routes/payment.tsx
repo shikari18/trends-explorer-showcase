@@ -430,9 +430,18 @@ function Payment() {
               </div>
             </div>
 
-            {/* Note on MTN Limits */}
-            <div className="mt-3 px-1 text-[11px] text-gray-400 leading-tight">
-              MTN Ghana regulatory limits apply to Mobile Money. For amounts over ₵2,000, please use Card or an upgraded MTN wallet.
+            {/* Note on MTN Limits & MoMo Approvals */}
+            <div className="mt-3 p-3 rounded-2xl bg-amber-50/70 border border-amber-200/60 text-[11px] text-amber-950 space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-amber-950">
+                <Smartphone size={13} className="text-amber-600 shrink-0" />
+                <span>MTN MoMo Payment Tips</span>
+              </div>
+              <p className="text-amber-900 leading-relaxed">
+                &bull; <strong>No pop-up?</strong> Dial <code className="font-bold bg-amber-100/80 px-1 py-0.5 rounded text-amber-950">*170#</code> &rarr; <strong>6</strong> (My Wallet) &rarr; <strong>3</strong> (My Approvals).
+              </p>
+              <p className="text-amber-900 leading-relaxed">
+                &bull; <strong>Amounts over ₵2,000:</strong> Bank of Ghana limits Tier 1 wallets to ₵2,000/day. Use <strong>Card (Visa/Mastercard)</strong> for amounts above ₵2,000.
+              </p>
             </div>
           </div>
         </div>
