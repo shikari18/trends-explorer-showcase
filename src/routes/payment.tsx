@@ -207,6 +207,11 @@ function Payment() {
     const pop = (window as any).PaystackPop;
     const publicKey = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as string) || "pk_live_4ee89791424f3443c50d3d7295a996a29fdeeeec";
 
+    // Auto-reset launching state after 8 seconds in case browser popup blocker or modal loses focus
+    const resetTimer = setTimeout(() => {
+      setPayStatus((prev) => (prev === "launching" ? "idle" : prev));
+    }, 8000);
+
     if (pop?.setup) {
       try {
         const setupConfig: any = {
@@ -217,10 +222,12 @@ function Payment() {
           ref,
           channels: ["card", "mobile_money", "bank"],
           onClose: () => {
+            clearTimeout(resetTimer);
             setPayStatus("idle");
             setStatusMessage("");
           },
           callback: async (response: any) => {
+            clearTimeout(resetTimer);
             const confirmedRef = response?.reference || ref;
             await finalizeOrder(confirmedRef);
           },
@@ -234,6 +241,7 @@ function Payment() {
         handler?.openIframe?.();
         setStatusMessage("Please complete payment in the Paystack modal.");
       } catch (e) {
+        clearTimeout(resetTimer);
         console.error("Popup setup error:", e);
         if (authUrl) {
           window.location.href = authUrl;
@@ -243,214 +251,229 @@ function Payment() {
         }
       }
     } else if (authUrl) {
+      clearTimeout(resetTimer);
       window.location.href = authUrl;
     } else {
+      clearTimeout(resetTimer);
       setPayStatus("error");
       setStatusMessage("Could not connect to Paystack. Please check your connection.");
     }
   };
+
+  // Quick test toggle (lets user test with ₵5 without exceeding MTN's standard wallet limit)
+  const [useTestAmount, setUseTestAmount] = useState(false);
+  const activeTotal = useTestAmount ? 5 : total;
 
   return (
     <PhoneFrame>
       <>
         <StatusBar />
         <div className="relative flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
-          <div className="pb-36">
+          <div className="pb-32 px-5 pt-3">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-4">
-              <Link to="/checkout" aria-label="Back" style={circle()} className="flex items-center justify-center">
+            <div className="flex items-center justify-between">
+              <Link to="/checkout" aria-label="Back" style={circle()} className="flex items-center justify-center active:scale-95 transition-transform">
                 <ArrowLeft size={18} color="#111" />
               </Link>
-              <div style={{ fontSize: 15.5, fontWeight: 600, color: "#111", letterSpacing: -0.3 }}>Payment</div>
-              <button style={circle()} className="flex items-center justify-center"><ShieldCheck size={17} color="#0F62FE" /></button>
+              <div className="text-[15px] font-semibold text-gray-900 tracking-tight">Checkout</div>
+              <div style={circle()} className="flex items-center justify-center">
+                <ShieldCheck size={17} className="text-emerald-500" />
+              </div>
             </div>
 
-            <div className="px-6 mt-5">
-              <h1 style={{ fontSize: 30, fontWeight: 700, color: "#111", letterSpacing: -0.9 }}>Choose payment</h1>
-              <p className="text-xs text-gray-500 mt-1">Direct bank integration — real-time verification</p>
+            {/* Progress Bar */}
+            <div className="mt-3">
+              <Progress step={3} labels={["Cart", "Checkout", "Payment"]} />
             </div>
 
-            <div className="px-6 mt-4"><Progress step={3} labels={["Cart", "Checkout", "Payment"]} /></div>
+            {/* Title */}
+            <div className="mt-4">
+              <h1 className="text-2xl font-bold text-gray-950 tracking-tight">Review & Pay</h1>
+              <p className="text-xs text-gray-500 mt-0.5">Secure payment via Paystack</p>
+            </div>
 
-            {/* Status Feedback */}
+            {/* Status Feedback banner */}
             {payStatus !== "idle" && (
-              <div className="px-5 mt-5">
+              <div className="mt-3">
                 {payStatus === "launching" && (
-                  <div className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl bg-blue-50 border border-blue-100 text-center">
-                    <Loader2 size={32} className="animate-spin text-blue-600" />
-                    <div className="text-sm font-bold text-blue-900">Connecting to Paystack...</div>
-                    <div className="text-xs text-blue-700">Complete payment in the official popup modal.</div>
+                  <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-sky-50 border border-sky-100 text-sky-900">
+                    <Loader2 size={18} className="animate-spin text-sky-600 shrink-0" />
+                    <div className="flex-1 text-xs">
+                      <p className="font-bold">Opening Paystack...</p>
+                      <p className="text-[11px] text-sky-700">Authorise on your phone or card.</p>
+                    </div>
                     {directPayUrl && (
                       <a
                         href={directPayUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline"
+                        className="text-[11px] font-bold text-sky-600 underline flex items-center gap-1"
                       >
-                        Popup blocked? Tap here to open payment page <ExternalLink size={12} />
+                        Open <ExternalLink size={10} />
                       </a>
                     )}
                   </div>
                 )}
 
                 {payStatus === "verifying" && (
-                  <div className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl bg-amber-50 border border-amber-100 text-center">
-                    <Loader2 size={32} className="animate-spin text-amber-600" />
-                    <div className="text-sm font-bold text-amber-900">Verifying payment...</div>
-                    <div className="text-xs text-amber-700">{statusMessage || "Finalizing order and notifying warehouse."}</div>
+                  <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-50 border border-amber-100 text-amber-900">
+                    <Loader2 size={18} className="animate-spin text-amber-600 shrink-0" />
+                    <div className="flex-1 text-xs">
+                      <p className="font-bold">Verifying payment...</p>
+                      <p className="text-[11px] text-amber-700">Fulfilling order with CJ Dropshipping.</p>
+                    </div>
                   </div>
                 )}
 
                 {payStatus === "success" && (
-                  <div className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl bg-emerald-50 border border-emerald-100 text-center">
-                    <CheckCircle2 size={40} className="text-emerald-500" />
-                    <div className="text-sm font-bold text-emerald-900">Payment Successful!</div>
-                    <div className="text-xs text-emerald-700">{statusMessage}</div>
+                  <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-900">
+                    <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
+                    <div className="flex-1 text-xs">
+                      <p className="font-bold">Payment Verified!</p>
+                      <p className="text-[11px] text-emerald-700">{statusMessage || "Redirecting to your receipt..."}</p>
+                    </div>
                   </div>
                 )}
 
                 {payStatus === "error" && (
-                  <div className="flex flex-col gap-3 p-5 rounded-3xl bg-red-50 border border-red-100">
-                    <div className="flex items-center gap-2 text-sm font-bold text-red-900">
-                      <AlertCircle size={18} className="text-red-600" />
-                      Payment Issue
+                  <div className="p-3.5 rounded-2xl bg-red-50 border border-red-100 text-red-900 space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold">
+                      <AlertCircle size={15} className="text-red-600 shrink-0" />
+                      <span>{statusMessage}</span>
                     </div>
-                    <div className="text-xs text-red-700 leading-relaxed">{statusMessage}</div>
                     <button
                       onClick={handleLaunchPaystack}
-                      className="py-2.5 px-4 rounded-xl bg-red-600 text-white font-bold text-xs flex items-center justify-center gap-2"
+                      className="text-xs font-bold text-red-700 underline flex items-center gap-1"
                     >
-                      <RefreshCw size={13} /> Try Opening Paystack Again
+                      <RefreshCw size={11} /> Try again
                     </button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* ── Official Paystack All-In-One Method Card ── */}
-            <div className="px-5 mt-5">
-              <div
-                style={{
-                  borderRadius: 24,
-                  background: "#fff",
-                  boxShadow: "0 0 0 2px #00C3F7, 0 16px 36px -16px rgba(0,195,247,0.3)",
-                }}
-                className="overflow-hidden p-5"
-              >
-                <div className="flex items-center gap-3.5 pb-4 border-b border-gray-100">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(0,195,247,0.1)" }}>
-                    <ShieldCheck size={26} className="text-[#00C3F7]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[15px] font-bold text-gray-900 tracking-tight">Paystack Secure Portal</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-[#00a3ce]">Official</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">Supports Mobile Money, Cards & Banks</p>
-                  </div>
-                  <div className="w-6 h-6 rounded-full bg-[#00C3F7] flex items-center justify-center shrink-0">
-                    <Check size={14} color="#fff" strokeWidth={3} />
-                  </div>
-                </div>
+            {/* Compact Order Summary Card */}
+            <div className="mt-3.5 p-4 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-2.5">
+              <div className="flex items-center justify-between text-xs pb-2 border-b border-gray-100">
+                <span className="font-bold text-gray-900">Order Summary ({cartItems.length} {cartItems.length === 1 ? "item" : "items"})</span>
+                {shippingAddress?.city && (
+                  <span className="text-gray-500 text-[11px]">Ship to {shippingAddress.city}</span>
+                )}
+              </div>
 
-                {/* Accepted Payment Channels */}
-                <div className="mt-4 space-y-2.5">
-                  <div className="text-[11.5px] font-bold text-gray-700">Accepted inside the popup:</div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/60 text-amber-900 font-semibold">
-                      <Smartphone size={14} className="text-amber-600 shrink-0" />
-                      <span>MTN MoMo</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-50/70 border border-red-200/60 text-red-900 font-semibold">
-                      <Smartphone size={14} className="text-red-600 shrink-0" />
-                      <span>Telecel Cash</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/60 text-blue-900 font-semibold">
-                      <CreditCard size={14} className="text-blue-600 shrink-0" />
-                      <span>Visa & Mastercard</span>
-                    </div>
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/60 text-purple-900 font-semibold">
-                      <Building size={14} className="text-purple-600 shrink-0" />
-                      <span>Bank Transfer</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-gray-500 pt-1 leading-relaxed">
-                    When you click the button below, Paystack's official modal will open on your screen. You can select your preferred payment option and complete securely.
-                  </p>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between text-gray-500">
+                  <span>Subtotal</span>
+                  <span className="text-gray-800 font-medium">₵{subtotal.toLocaleString()}</span>
                 </div>
+                <div className="flex justify-between text-gray-500">
+                  <span>Worldwide Shipping</span>
+                  <span className="text-emerald-600 font-semibold">Free</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold text-gray-950 pt-1 border-t border-gray-50">
+                  <span>Total</span>
+                  <span className="text-base text-gray-950 tracking-tight">₵{activeTotal.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Discreet test switcher for MTN limit verification */}
+              <div className="pt-2 border-t border-dashed border-gray-200 flex items-center justify-between text-[11px]">
+                <span className="text-gray-500">
+                  {useTestAmount ? "Testing at ₵5 (MoMo friendly)" : "Standard amount"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setUseTestAmount(!useTestAmount)}
+                  className="px-2 py-0.5 rounded-md font-semibold text-[10.5px] transition-colors border"
+                  style={{
+                    backgroundColor: useTestAmount ? "#EFF6FF" : "#F3F4F6",
+                    borderColor: useTestAmount ? "#93C5FD" : "#E5E7EB",
+                    color: useTestAmount ? "#1D4ED8" : "#4B5563",
+                  }}
+                >
+                  {useTestAmount ? "Reset to ₵" + total.toLocaleString() : "Test with ₵5"}
+                </button>
               </div>
             </div>
 
-            {/* Delivery Destination Preview */}
-            {shippingAddress && (
-              <div className="px-5 mt-4">
-                <div className="p-4 rounded-2xl bg-white border border-gray-100 shadow-xs space-y-1.5 text-xs">
-                  <div className="font-bold text-gray-800 flex items-center justify-between">
-                    <span>Delivering To</span>
-                    <Link to="/checkout" className="text-blue-600 font-semibold hover:underline text-[11px]">Edit</Link>
+            {/* Compact Paystack Payment Card */}
+            <div className="mt-3 p-4 rounded-2xl bg-white border border-gray-200 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-600 font-bold text-xs">
+                    P
                   </div>
-                  <div className="text-gray-900 font-semibold">{shippingAddress.name} &bull; {shippingAddress.phone}</div>
-                  <div className="text-gray-500">{shippingAddress.address}, {shippingAddress.city}, {shippingAddress.province}</div>
+                  <div>
+                    <div className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      Paystack
+                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-semibold">Live</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500">MTN MoMo, Telecel, Card, Bank</p>
+                  </div>
+                </div>
+                <div className="w-4 h-4 rounded-full bg-sky-500 flex items-center justify-center">
+                  <Check size={10} className="text-white" strokeWidth={3} />
                 </div>
               </div>
-            )}
 
-            {/* Order Summary */}
-            <div className="px-5 mt-4">
-              <div className="p-4" style={{ borderRadius: 22, background: "#fff", boxShadow: "0 1px 2px rgba(17,17,17,0.04), 0 12px 28px -18px rgba(17,17,17,0.14), inset 0 0 0 1px rgba(17,17,17,0.04)" }}>
-                <div className="flex items-center justify-between">
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>Order Summary</div>
-                  <div style={{ fontSize: 12, color: "#666" }}>{cartItems.length} Items</div>
-                </div>
-                <div className="mt-3 space-y-2" style={{ fontSize: 13.5 }}>
-                  <Row label="Subtotal" value={`₵${subtotal.toLocaleString()}`} />
-                  {discountPercent > 0 && <Row label="Discount (10%)" value={<span style={{ color: "#34C759", fontWeight: 700 }}>-₵${discountAmount.toLocaleString()}</span>} />}
-                  <Row label="Worldwide Shipping" value={<span style={{ color: "#34C759", fontWeight: 700 }}>Free</span>} />
-                </div>
-                <div className="my-3" style={{ height: 1, background: "rgba(17,17,17,0.06)" }} />
-                <div className="flex items-center justify-between">
-                  <span style={{ fontSize: 14, color: "#666" }}>Total</span>
-                  <span style={{ fontSize: 22, fontWeight: 700, color: "#111", letterSpacing: -0.6 }}>₵{total.toLocaleString()}</span>
-                </div>
+              {/* Supported payment pills */}
+              <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-gray-100">
+                <span className="text-[10.5px] font-medium px-2 py-1 rounded-md bg-amber-50 text-amber-900 border border-amber-100 flex items-center gap-1">
+                  <Smartphone size={10} className="text-amber-600" /> MTN MoMo
+                </span>
+                <span className="text-[10.5px] font-medium px-2 py-1 rounded-md bg-red-50 text-red-900 border border-red-100 flex items-center gap-1">
+                  <Smartphone size={10} className="text-red-600" /> Telecel
+                </span>
+                <span className="text-[10.5px] font-medium px-2 py-1 rounded-md bg-blue-50 text-blue-900 border border-blue-100 flex items-center gap-1">
+                  <CreditCard size={10} className="text-blue-600" /> Card / Visa
+                </span>
               </div>
             </div>
 
-            {/* Security Guarantee */}
-            <div className="px-6 mt-4 flex items-center justify-center gap-2 text-[11.5px] text-gray-400">
-              <Lock size={12} className="text-emerald-500" />
-              <span>PCI-DSS Level 1 &bull; 256-bit SSL encrypted Paystack gateway</span>
+            {/* Note on MTN Limits */}
+            <div className="mt-3 px-1 text-[11px] text-gray-400 leading-tight">
+              MTN Ghana regulatory limits apply to Mobile Money. For amounts over ₵2,000, please use Card or an upgraded MTN wallet.
             </div>
           </div>
         </div>
 
         {/* Sticky Pay Bar */}
         <div className="absolute left-4 right-4 z-20" style={{ bottom: 18 }}>
-          <div className="flex items-center gap-3 pl-5 pr-2" style={{ height: 66, borderRadius: 24, background: "rgba(255,255,255,0.92)", backdropFilter: "blur(28px) saturate(160%)", boxShadow: "0 20px 40px -14px rgba(17,17,17,0.22), inset 0 0 0 1px rgba(255,255,255,0.6)" }}>
-            <div className="flex-1">
-              <div style={{ fontSize: 11, color: "#8A8A8A", letterSpacing: 0.3, fontWeight: 600, textTransform: "uppercase" }}>Total to Pay</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>₵{total.toLocaleString()}</div>
+          <div
+            className="flex items-center gap-3 px-4"
+            style={{
+              height: 60,
+              borderRadius: 20,
+              background: "rgba(255,255,255,0.96)",
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 14px 30px -10px rgba(0,0,0,0.15), inset 0 0 0 1px rgba(0,0,0,0.06)",
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="text-[10.5px] text-gray-500 font-medium">To Pay</div>
+              <div className="text-base font-bold text-gray-900 truncate">₵{activeTotal.toLocaleString()}</div>
             </div>
             <button
               onClick={handleLaunchPaystack}
               disabled={payStatus === "launching" || payStatus === "verifying"}
-              className="inline-flex items-center justify-center gap-2 px-6 disabled:opacity-50 cursor-pointer active:scale-95 transition-transform"
-              style={{
-                height: 52,
-                borderRadius: 20,
-                background: "#00C3F7",
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 700,
-                boxShadow: "0 12px 24px -8px rgba(0,195,247,0.5)",
-              }}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-[#00C3F7] hover:bg-[#00b0df] active:scale-95 transition-transform disabled:opacity-50 cursor-pointer shadow-md shadow-sky-500/20"
             >
-              {payStatus === "launching" || payStatus === "verifying" ? (
-                <Loader2 size={16} className="animate-spin" />
+              {payStatus === "launching" ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Opening...</span>
+                </>
+              ) : payStatus === "verifying" ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Verifying...</span>
+                </>
               ) : (
-                <Lock size={14} />
+                <>
+                  <Lock size={12} />
+                  <span>Pay Now</span>
+                </>
               )}
-              {payStatus === "launching" ? "Opening..." : payStatus === "verifying" ? "Verifying..." : `Pay ₵${total.toLocaleString()}`}
             </button>
           </div>
         </div>
@@ -461,22 +484,13 @@ function Payment() {
   );
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span style={{ color: "#666" }}>{label}</span>
-      <span style={{ color: "#111", fontWeight: 600 }}>{value}</span>
-    </div>
-  );
-}
-
 function circle() {
   return {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: 999,
     background: "rgba(255,255,255,0.9)",
     backdropFilter: "blur(16px)",
-    boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06), 0 6px 14px -8px rgba(17,17,17,0.15)",
+    boxShadow: "inset 0 0 0 1px rgba(17,17,17,0.06), 0 4px 10px -4px rgba(17,17,17,0.1)",
   } as const;
 }
