@@ -42,10 +42,15 @@ function Payment() {
       if (savedCart) {
         try {
           const parsed = JSON.parse(savedCart);
-          setCartItems(Array.isArray(parsed) && parsed.length > 0 ? parsed : [{ id: "demo-item", name: "Trends Luxury Order", price: 3798, qty: 1 }]);
-        } catch { setCartItems([{ id: "demo-item", name: "Trends Luxury Order", price: 3798, qty: 1 }]); }
+          const valid = Array.isArray(parsed)
+            ? parsed.filter((it: any) => it.id !== "demo-item" && it.name !== "Trends Luxury Order")
+            : [];
+          setCartItems(valid);
+        } catch {
+          setCartItems([]);
+        }
       } else {
-        setCartItems([{ id: "demo-item", name: "Trends Luxury Order", price: 3798, qty: 1 }]);
+        setCartItems([]);
       }
 
       const savedUser = localStorage.getItem("user") || localStorage.getItem("gUser");
@@ -81,7 +86,7 @@ function Payment() {
     const p = typeof item.price === "number" ? item.price : parseFloat(item.price) || 0;
     const q = typeof item.qty === "number" ? item.qty : parseInt(item.qty) || 1;
     return sum + p * q;
-  }, 0) || 3798;
+  }, 0);
 
   const discountAmount = subtotal * discountPercent;
   const total = Math.max(0, subtotal - discountAmount);

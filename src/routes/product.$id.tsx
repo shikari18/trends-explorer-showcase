@@ -195,6 +195,32 @@ function ProductDetail() {
     import("sonner").then(({ toast }) => toast.success("Added to cart!"));
   };
 
+  const handleBuyNow = () => {
+    if (!product) return;
+    const colorLabel = selectedColor || "Default";
+    const sizeLabel = selectedSize || "One Size";
+    const itemId = `${product.id}-${colorLabel}-${sizeLabel}`;
+
+    const item = {
+      id: itemId,
+      productId: product.id,
+      cjId: product.cjId || product.id,
+      brand: product.brand,
+      name: product.name,
+      color: colorLabel,
+      size: sizeLabel,
+      price: activeGhsPrice || product.rawPrice || 100,
+      rawPrice: activeGhsPrice || product.rawPrice || 100,
+      img: activeImgUrl || product.img,
+      qty: 1,
+    };
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cart", JSON.stringify([item]));
+    }
+    navigate({ to: "/checkout" });
+  };
+
   const handleVideoToggle = () => {
     if (!videoRef.current) return;
     if (videoPlaying) {
@@ -539,7 +565,7 @@ function ProductDetail() {
                     {priceDisplay}
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 500, color: "#8A8A8A", textDecoration: "line-through" }}>
-                    ₵{Math.round((product?.rawPrice || 3798) * 1.3).toLocaleString()}
+                    ₵{Math.round((activeGhsPrice || product?.rawPrice || 100) * 1.3).toLocaleString()}
                   </div>
                   <div className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400">
                     -23% OFF
@@ -756,7 +782,7 @@ function ProductDetail() {
               )}
             </button>
             <button
-              onClick={() => navigate({ to: "/checkout" })}
+              onClick={handleBuyNow}
               className="flex-1 inline-flex items-center justify-center transition-all active:scale-95 cursor-pointer"
               style={{
                 height: 52,

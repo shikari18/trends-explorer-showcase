@@ -94,7 +94,19 @@ function Checkout() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("cart");
-      setCartItems(saved ? JSON.parse(saved) : []);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          const valid = Array.isArray(parsed)
+            ? parsed.filter((it: any) => it.id !== "demo-item" && it.name !== "Trends Luxury Order")
+            : [];
+          setCartItems(valid);
+        } catch {
+          setCartItems([]);
+        }
+      } else {
+        setCartItems([]);
+      }
       
       // Restore signed-in user from 'user' or 'gUser'
       const rawUser = localStorage.getItem("user") || localStorage.getItem("gUser");
